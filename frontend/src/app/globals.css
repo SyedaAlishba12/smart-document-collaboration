@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+  /* =========================================================
+     Smart Document Collaboration — Design System
+     Warm Editorial / Workspace Theme
+     ========================================================= */
+
+  /* Backgrounds */
+  --background: #f5f3ee;
+  --surface: #fcfbf8;
+  --surface-muted: #eeece6;
+  --surface-hover: #e8e6df;
+
+  /* Sidebar / Dark surfaces */
+  --sidebar: #17211f;
+  --sidebar-hover: #202c29;
+  --sidebar-active: #263632;
+
+  /* Borders */
+  --border: #ddd9d0;
+  --border-light: #e8e5de;
+  --border-strong: #c9c4b9;
+
+  /* Primary */
+  --primary: #2f6f68;
+  --primary-hover: #255b55;
+  --primary-soft: #e1eeeb;
+
+  /* Secondary accent */
+  --accent: #b87952;
+  --accent-soft: #f1e3d9;
+
+  /* Text */
+  --foreground: #202522;
+  --foreground-secondary: #454b48;
+  --muted: #747a75;
+  --muted-light: #9a9e99;
+
+  /* Status */
+  --success: #39745a;
+  --success-soft: #e2eee7;
+
+  --warning: #a8732f;
+  --warning-soft: #f3ead9;
+
+  --danger: #a84c46;
+  --danger-soft: #f3e2df;
+
+  --info: #4d6f82;
+  --info-soft: #e2ebef;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(32, 37, 34, 0.04);
+  --shadow-md: 0 5px 18px rgba(32, 37, 34, 0.07);
+  --shadow-lg: 0 12px 35px rgba(32, 37, 34, 0.10);
+
+  /* Radius */
+  --radius-sm: 7px;
+  --radius-md: 9px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 22px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   Scrollbar
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c9c6bd;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #aaa69c;
+}
+
+/* =========================================================
+   Selection
+   ========================================================= */
+
+::selection {
+  background: var(--primary-soft);
+  color: var(--foreground);
+}
