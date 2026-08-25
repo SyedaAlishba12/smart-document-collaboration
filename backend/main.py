@@ -2,26 +2,15 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from database.session import AsyncSessionLocal
+from routes.comments import router as comments_router
+from routes.comment_replies import router as comment_replies_router
+from routes.document_versions import router as document_versions_router
+from websocket.collaboration import router as websocket_router
+
 
 app = FastAPI()
 
-
-@app.get("/")
-async def root():
-    return {
-        "success": True,
-        "message": "Smart Document Collaboration API is running",
-        "data": None,
-    }
-
-
-@app.get("/api/health/database")
-async def database_health():
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(text("SELECT 1"))
-
-        return {
-            "success": True,
-            "message": "Database connection successful",
-            "data": result.scalar(),
-        }
+app.include_router(websocket_router)
+app.include_router(comments_router)
+app.include_router(comment_replies_router)
+app.include_router(document_versions_router)
