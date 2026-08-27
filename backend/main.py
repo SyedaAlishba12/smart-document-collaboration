@@ -9,6 +9,8 @@ from routes.folder_routes import router as folder_router
 from routes.document_routes import router as document_router
 from routes.team_routes import router as team_router
 from routes.file_routes import router as file_router
+from models import user, workspace, workspace_member
+from routes import auth_routes, user_routes, workspace_routes
 
 load_dotenv()
 
@@ -28,6 +30,10 @@ app.include_router(folder_router)
 app.include_router(document_router)  
 app.include_router(team_router)
 app.include_router(file_router)
+app.include_router(auth_routes.router)
+app.include_router(user_routes.router)
+app.include_router(workspace_routes.router)
+
 
 @app.get("/")
 async def root():
