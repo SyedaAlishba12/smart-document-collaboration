@@ -4,11 +4,11 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class DocumentVersionCreate(BaseModel):
-    content: str = Field(min_length=1)
+class VersionCreate(BaseModel):
+    content: str
 
 
-class DocumentVersionResponse(BaseModel):
+class VersionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID

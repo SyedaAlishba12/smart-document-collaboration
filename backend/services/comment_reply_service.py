@@ -21,11 +21,9 @@ class CommentReplyService:
             user_id=user_id,
             content=data.content,
         )
-
         session.add(reply)
         await session.commit()
         await session.refresh(reply)
-
         return reply
 
     @staticmethod
@@ -34,11 +32,8 @@ class CommentReplyService:
         reply_id: UUID,
     ) -> CommentReply | None:
         result = await session.execute(
-            select(CommentReply).where(
-                CommentReply.id == reply_id
-            )
+            select(CommentReply).where(CommentReply.id == reply_id)
         )
-
         return result.scalar_one_or_none()
 
     @staticmethod
@@ -51,7 +46,6 @@ class CommentReplyService:
             .where(CommentReply.comment_id == comment_id)
             .order_by(CommentReply.created_at.asc())
         )
-
         return list(result.scalars().all())
 
     @staticmethod
@@ -60,19 +54,12 @@ class CommentReplyService:
         reply_id: UUID,
         data: CommentReplyUpdate,
     ) -> CommentReply | None:
-        reply = await CommentReplyService.get_reply(
-            session,
-            reply_id,
-        )
-
+        reply = await CommentReplyService.get_reply(session, reply_id)
         if reply is None:
             return None
-
         reply.content = data.content
-
         await session.commit()
         await session.refresh(reply)
-
         return reply
 
     @staticmethod
@@ -80,15 +67,9 @@ class CommentReplyService:
         session: AsyncSession,
         reply_id: UUID,
     ) -> bool:
-        reply = await CommentReplyService.get_reply(
-            session,
-            reply_id,
-        )
-
+        reply = await CommentReplyService.get_reply(session, reply_id)
         if reply is None:
             return False
-
         await session.delete(reply)
         await session.commit()
-
         return True

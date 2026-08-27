@@ -1,16 +1,25 @@
 from fastapi import FastAPI
-from sqlalchemy import text
 
-from database.session import AsyncSessionLocal
-from routes.comments import router as comments_router
-from routes.comment_replies import router as comment_replies_router
-from routes.document_versions import router as document_versions_router
-from websocket.collaboration import router as websocket_router
+# Import your module routers
+from routes.comment_routes import router as comment_router
+from routes.version_routes import router as version_router
+from routes.collaboration_routes import router as collaboration_router
 
+# Temporarily commented until Fatima provides auth routes
+# from routes.auth_routes import router as auth_router
 
 app = FastAPI()
 
-app.include_router(websocket_router)
-app.include_router(comments_router)
-app.include_router(comment_replies_router)
-app.include_router(document_versions_router)
+# app.include_router(auth_router)
+app.include_router(comment_router)
+app.include_router(version_router)
+app.include_router(collaboration_router)
+
+
+@app.get("/")
+async def root():
+    return {
+        "success": True,
+        "message": "Smart Document Collaboration Platform API",
+        "data": None,
+    }
