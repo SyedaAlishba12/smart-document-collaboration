@@ -1,6 +1,6 @@
 import uuid
-from datetime import datetime
 
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Boolean, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -58,19 +58,19 @@ class Document(Base):
     )
 
     # UTC Timestamps as per Rule #6
+ 
     created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False
-    )
+)
 
     updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False
-    )
-
+)
     # Internal Relationships (Zainab's ownership)
     folder = relationship(
         "Folder",

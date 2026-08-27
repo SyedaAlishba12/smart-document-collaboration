@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -27,8 +27,11 @@ class TeamMember(Base):
         index=True
     )
     role = Column(String(50), nullable=False, default="member")
-    joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-
+    joined_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+)
     # Relationships
     team = relationship("Team", back_populates="team_members")
     user = relationship("User", back_populates="team_members")
