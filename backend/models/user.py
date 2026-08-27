@@ -51,3 +51,6 @@ class User(Base):
     workspace_memberships: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember", back_populates="user"
     )
+    #zainab's modules' reverse relationships
+    files: Mapped[list["File"]] = relationship("File", back_populates="uploader", cascade="all, delete-orphan")
+    team_members: Mapped[list["TeamMember"]] = relationship("TeamMember", back_populates="user", cascade="all, delete-orphan")

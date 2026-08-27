@@ -18,6 +18,7 @@ class FolderController:
         folder_data: FolderCreate
     ):
         try:
+            # Delegate folder creation logic to service layer
             folder = await FolderService.create_folder(
                 db,
                 folder_data
@@ -41,6 +42,7 @@ class FolderController:
         db: AsyncSession,
         folder_id: UUID
     ):
+        # Fetch folder by ID from service
         folder = await FolderService.get_folder_by_id(
             db,
             folder_id
@@ -64,6 +66,7 @@ class FolderController:
         db: AsyncSession,
         workspace_id: UUID
     ):
+        # Fetch all folders belonging to a specific workspace
         folders = await FolderService.get_folders_by_workspace(
             db,
             workspace_id
@@ -81,6 +84,7 @@ class FolderController:
         folder_id: UUID,
         folder_data: FolderUpdate
     ):
+        # Update folder properties
         folder = await FolderService.update_folder(
             db,
             folder_id,
@@ -107,6 +111,7 @@ class FolderController:
         move_data: FolderMove
     ):
         try:
+            # Move folder to a new parent location
             folder = await FolderService.move_folder(
                 db,
                 folder_id,
@@ -138,6 +143,7 @@ class FolderController:
         db: AsyncSession,
         folder_id: UUID
     ):
+        # Delete folder record from database
         success = await FolderService.delete_folder(
             db,
             folder_id

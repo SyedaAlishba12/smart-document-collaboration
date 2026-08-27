@@ -10,7 +10,8 @@ from schemas.folder_schema import (
     FolderUpdate,
     FolderMove
 )
-
+from middleware.auth_middleware import get_current_user  # Authentication middleware from Fatima's module
+from models.user import User  # User model import for type hinting
 
 router = APIRouter(
     prefix="/api/folders",
@@ -21,7 +22,8 @@ router = APIRouter(
 @router.get("/workspace/{workspace_id}")
 async def get_workspace_folders(
     workspace_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Protect route with current user verification
 ):
     return await FolderController.get_workspace_folders(
         db,
@@ -35,7 +37,8 @@ async def get_workspace_folders(
 )
 async def create_folder(
     folder_data: FolderCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Ensure user is authenticated before creating a folder
 ):
     result = await FolderController.create_folder(
         db,
@@ -54,7 +57,8 @@ async def create_folder(
 @router.get("/{folder_id}")
 async def get_folder(
     folder_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Secure single folder fetch
 ):
     result = await FolderController.get_folder(
         db,
@@ -74,7 +78,8 @@ async def get_folder(
 async def update_folder(
     folder_id: UUID,
     folder_data: FolderUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Secure folder update
 ):
     result = await FolderController.update_folder(
         db,
@@ -95,7 +100,8 @@ async def update_folder(
 async def move_folder(
     folder_id: UUID,
     move_data: FolderMove,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Secure folder move action
 ):
     result = await FolderController.move_folder(
         db,
@@ -118,7 +124,8 @@ async def move_folder(
 )
 async def delete_folder(
     folder_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Secure folder deletion
 ):
     result = await FolderController.delete_folder(
         db,

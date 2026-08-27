@@ -49,5 +49,5 @@ class Workspace(Base):
     # Left commented out here since Zainab owns folder.py / team.py —
     # she should add the reverse side (`workspace = relationship(...)`)
     # on her end rather than this file reaching into her models.
-    # folders: Mapped[list["Folder"]] = relationship("Folder", back_populates="workspace")
-    # teams: Mapped[list["Team"]] = relationship("Team", back_populates="workspace")
+    folders: Mapped[list["Folder"]] = relationship("Folder", back_populates="workspace")
+    teams: Mapped[list["Team"]] = relationship("Team", back_populates="workspace")
