@@ -1,35 +1,43 @@
-﻿"""
-Permission model — owns access-control records for resources.
+"""
+Permission model — owns access-control records for documents.
 
-OPEN QUESTION (design review):
-    spec explicitly mentions document sharing/permissions; folder-level
-    permissions are included here under resource_type="folder" based on the
-    reasonable assumption that folder sharing will mirror document sharing.
-    If the team decides folders are workspace-scoped only (no per-user grants),
-    remove "folder" from ResourceType and drop the related routes later.
+FK CONSTRAINTS:
+    - document_id  -> Document.id ("documents" table, confirmed from
+                      Zainab's feature/documents-editor-files branch,
+                      __tablename__ = "documents")
+    - user_id      -> User.id ("user" table, confirmed from Fatima's branch,
+                      __tablename__ = "user")
+    - granted_by   -> User.id (same table — the granting user)
+                      NOTE: no relationship() added for user_id / granted_by yet;
+                      Fatima's User model has no back_populates expecting a
+                      Permission relationship.  Add once needed for traversal.
 
-FK CONSTRAINTS NOT ENFORCED YET:
-    - resource_id  -> Document.id or Folder.id (depending on resource_type)
-                     Tables live on teammates' branches; FK DDL added once the
-                     shared skeleton is merged.
-    - user_id      -> User.id   (same reason)
-    - granted_by   -> User.id   (same reason)
+SCOPE DECISION (2026-08-27):
+    Permissions are document-only.  Confirmed via Zainab's folder.py:
+    Folder has no permissions relationship.  ResourceType enum and
+    resource_type/resource_id columns have been removed and replaced with
+    the concrete document_id FK column.
+
+OPEN QUESTION:
+    sharing_scope and granted_by columns are kept as-is — Syeda's reply
+    on whether link-sharing scope lives here or on a separate link-sharing
+    record is still pending.  Neither column is depended on by other models,
+    so no urgency to change either way.
 """
 
 import enum
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, text
+from sqlalchemy import DateTime, Enum, ForeignKey, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.base import Base
 
-
-class ResourceType(str, enum.Enum):
-    document = "document"
-    folder = "folder"
+if TYPE_CHECKING:
+    from models.document import Document
 
 
 class PermissionLevel(str, enum.Enum):
@@ -47,10 +55,11 @@ class SharingScope(str, enum.Enum):
 
 class Permission(Base):
     """
-    Stores a single access-control grant for a user on a resource.
+    Stores a single access-control grant for a user on a document.
 
-    One row = one (user, resource, level) tuple.  Multiple rows for the same
-    resource represent different users with different permission levels.
+    One row = one (user_id, document_id, permission_level) tuple.
+    Multiple rows for the same document represent different users with
+    different levels.
     """
 
     __tablename__ = "permissions"
@@ -63,26 +72,21 @@ class Permission(Base):
         default=uuid.uuid4,
     )
 
-    # -- Resource being protected ----------------------------------------------
-    resource_type: Mapped[ResourceType] = mapped_column(
-        Enum(ResourceType, name="resource_type_enum"),
-        nullable=False,
-        index=True,
-    )
-
-    # FK comment only -- references Document.id or Folder.id depending on
-    # resource_type.  Enforced once those tables land on this branch.
-    resource_id: Mapped[uuid.UUID] = mapped_column(
+    # -- Document being protected ----------------------------------------------
+    # FK -> documents.id  (Zainab's table, confirmed 2026-08-27)
+    document_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("documents.id"),
         nullable=False,
         index=True,
     )
 
     # -- Who holds this permission ---------------------------------------------
-    # FK comment only -- references User.id.
-    # Enforced once the User table lands on this branch.
+    # FK -> user.id  (Fatima's table, singular __tablename__, confirmed)
+    # No relationship() added yet — User has no back_populates for permissions.
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("user.id"),
         nullable=False,
         index=True,
     )
@@ -94,6 +98,9 @@ class Permission(Base):
     )
 
     # -- How broadly the resource is shared -----------------------------------
+    # OPEN: whether link-sharing scope stays here or moves to a dedicated
+    # link-sharing record is pending Syeda's input.  No other model depends
+    # on this column yet.
     sharing_scope: Mapped[SharingScope] = mapped_column(
         Enum(SharingScope, name="sharing_scope_enum"),
         nullable=False,
@@ -102,10 +109,11 @@ class Permission(Base):
     )
 
     # -- Audit ----------------------------------------------------------------
-    # FK comment only -- references User.id (the user who issued the grant).
-    # Enforced once the User table lands on this branch.
+    # FK -> user.id  (the user who issued the grant)
+    # No relationship() — same reasoning as user_id above.
     granted_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
+        ForeignKey("user.id"),
         nullable=False,
     )
 
@@ -124,9 +132,17 @@ class Permission(Base):
         server_default=text("now()"),
     )
 
+    # -- Relationships --------------------------------------------------------
+    # Completes the back_populates declared on Document.permissions.
+    # Document.permissions = relationship("Permission", back_populates="document",
+    #                                     cascade="all, delete-orphan")
+    document: Mapped["Document"] = relationship(
+        "Document",
+        back_populates="permissions",
+    )
+
     def __repr__(self) -> str:
         return (
             f"<Permission id={self.id} user_id={self.user_id} "
-            f"resource_type={self.resource_type} resource_id={self.resource_id} "
-            f"level={self.permission_level}>"
+            f"document_id={self.document_id} level={self.permission_level}>"
         )
