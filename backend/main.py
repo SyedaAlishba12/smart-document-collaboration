@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from routes.comment_routes import router as comment_router
 from routes.version_routes import router as version_router
 from routes.collaboration_routes import router as collaboration_router
+from routes.activity_log_routes import router as activity_log_router
 
 # Temporarily commented until Fatima provides auth routes
 # from routes.auth_routes import router as auth_router
@@ -14,7 +15,7 @@ app = FastAPI()
 app.include_router(comment_router)
 app.include_router(version_router)
 app.include_router(collaboration_router)
-
+app.include_router(activity_log_router)
 
 @app.get("/")
 async def root():
