@@ -88,7 +88,10 @@ async def get_user_notifications(
     stmt = (
         select(Notification)
         .where(Notification.user_id == user_id)
-        .order_by(Notification.created_at.desc())
+        # Primary sort: newest first.  Secondary: id DESC breaks ties when
+        # multiple rows share the same created_at timestamp (e.g. in-memory
+        # SQLite tests or rapid bulk inserts where clock resolution is coarse).
+        .order_by(Notification.created_at.desc(), Notification.id.desc())
         .limit(limit)
         .offset(offset)
     )
