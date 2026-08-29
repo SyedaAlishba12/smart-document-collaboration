@@ -5,6 +5,9 @@ from sqlalchemy import text
 from database.session import AsyncSessionLocal
 from models import user, workspace, workspace_member
 from routes import auth_routes, user_routes, workspace_routes
+from routes.comment_routes import router as comment_router
+from routes.version_routes import router as version_router
+from routes.collaboration_routes import router as collaboration_router
 
 app = FastAPI()
 
@@ -19,13 +22,16 @@ app.add_middleware(
 app.include_router(auth_routes.router)
 app.include_router(user_routes.router)
 app.include_router(workspace_routes.router)
+app.include_router(comment_router)
+app.include_router(version_router)
+app.include_router(collaboration_router)
 
 
 @app.get("/")
 async def root():
     return {
         "success": True,
-        "message": "Smart Document Collaboration API is running",
+        "message": "Smart Document Collaboration Platform API",
         "data": None,
     }
 
