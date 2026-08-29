@@ -16,6 +16,7 @@ import {
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -72,6 +73,7 @@ export default function Sidebar({
   collapsed = false,
 }: SidebarProps) {
   const pathname = usePathname();
+  const { user, initials } = useAuth();
 
   return (
     <aside
@@ -227,17 +229,17 @@ export default function Sidebar({
               text-[#57534e]
             "
           >
-            SA
+            {initials}
           </div>
 
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold text-[var(--foreground)]">
-                Syeda Alishba
+                {user?.full_name ?? "Loading..."}
               </p>
 
               <p className="truncate text-[10px] text-[var(--muted)]">
-                Account
+                {user?.email ?? "Account"}
               </p>
             </div>
           )}
