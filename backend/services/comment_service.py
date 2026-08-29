@@ -8,6 +8,11 @@ from models.comment import Comment
 from models.comment_reply import CommentReply
 from schemas.comment import CommentCreate, CommentReplyCreate, CommentUpdate
 
+# Syeda's Activity Log
+from models.document import Document
+from services.activity_log_service import create_activity_log
+from schemas.activity_log import ActivityLogCreate
+
 
 class CommentService:
 
@@ -28,22 +33,32 @@ class CommentService:
         await session.commit()
         await session.refresh(comment)
 
-        # TODO: Uncomment once Taha's notification_service is ready
-        # from services.notification_service import create_notification
-        # from models.notification import NotificationType
-        #
-        # mentions = re.findall(r"@(\w+)", data.content)
-        # for username in mentions:
-        #     await create_notification(session, user_id, NotificationType.mention, "document", document_id, f"@{username} mentioned you")
+        # ---- Activity Log (Syeda) ----
+        try:
+            doc = await session.get(Document, document_id)
+            if doc:
+                await create_activity_log(session, ActivityLogCreate(
+                    user_id=user_id,
+                    workspace_id=doc.workspace_id,
+                    document_id=document_id,
+                    action="comment_created",
+                    description=f"Added a comment: {data.content[:50]}..."
+                ))
+        except Exception as e:
+            print(f"[Activity Log Error]: {e}")
 
-        # Temporary mock for development
-        mentions = re.findall(r"@(\w+)", data.content)
-        for username in mentions:
-            print(f"[MOCK] Notify @{username} about comment {comment.id}")
+        # ---- Mentions (Taha - Stub safe) ----
+        try:
+            from services.notification_service import create_notification
+            from models.notification import NotificationType
+            mentions = re.findall(r"@(\w+)", data.content)
+            for username in mentions:
+                print(f"[MOCK] Notify @{username} about comment {comment.id}")
+        except (NotImplementedError, ImportError):
+            pass
 
         return comment
 
-    # ... (rest of the methods unchanged)
     @staticmethod
     async def get_document_comments(
         session: AsyncSession,
@@ -111,18 +126,15 @@ class CommentService:
         await session.commit()
         await session.refresh(reply)
 
-        # TODO: Uncomment once Taha's notification_service is ready
-        # from services.notification_service import create_notification
-        # from models.notification import NotificationType
-        #
-        # mentions = re.findall(r"@(\w+)", data.content)
-        # for username in mentions:
-        #     await create_notification(session, user_id, NotificationType.mention, "document", document_id, f"@{username} mentioned you")
-
-        # Temporary mock for development
-        mentions = re.findall(r"@(\w+)", data.content)
-        for username in mentions:
-            print(f"[MOCK] Notify @{username} about reply {reply.id}")
+        # ---- Mentions (Taha - Stub safe) ----
+        try:
+            from services.notification_service import create_notification
+            from models.notification import NotificationType
+            mentions = re.findall(r"@(\w+)", data.content)
+            for username in mentions:
+                print(f"[MOCK] Notify @{username} about reply {reply.id}")
+        except (NotImplementedError, ImportError):
+            pass
 
         return reply
 

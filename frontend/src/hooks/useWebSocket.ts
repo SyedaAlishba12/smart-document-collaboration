@@ -14,7 +14,7 @@ export function useWebSocket(documentId: string, userId: string) {
 
   useEffect(() => {
     const ws = new WebSocket(
-      `ws://localhost:8000/ws/documents/${documentId}?user_id=${userId}`
+      `ws://localhost:8000/ws/documents/${documentId}?token=${localStorage.getItem("access_token")}`
     );
 
     ws.onmessage = (event) => {

@@ -1,94 +1,102 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import CommentThread from "@/components/comments/CommentThread";
+import PresenceIndicator from "@/components/collaboration/PresenceIndicator";
 import { useParams } from "next/navigation";
+import apiFetch from "@/lib/api";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 export default function CommentsPage() {
   const params = useParams();
   const documentId = params.id as string;
 
-  // Mock data – to be replaced with API calls
-  const [comments, setComments] = useState([
-    {
-      id: "1",
-      author: "Syeda Alishba",
-      content: "Can you please update the intro section?",
-      createdAt: "2h ago",
-      status: "open",
-      replies: [
-        {
-          id: "r1",
-          author: "Zainab Bibi",
-          content: "Sure, I'll update it today.",
-          createdAt: "1h ago",
-        },
-      ],
-    },
-    {
-      id: "2",
-      author: "Fatima Khalid",
-      content: "Looks good!",
-      createdAt: "3h ago",
-      status: "resolved",
-      replies: [],
-    },
-  ]);
+  // Get current user ID from localStorage (temporary, replace with auth context)
+  const userId = typeof window !== "undefined" ? localStorage.getItem("user_id") || "00000000-0000-0000-0000-000000000001" : "00000000-0000-0000-0000-000000000001";
 
-  const handleAddComment = (content: string) => {
-    setComments((prev) => [
-      ...prev,
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        author: "You",
-        content,
-        createdAt: "Just now",
-        status: "open",
-        replies: [],
-      },
-    ]);
-  };
+  const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const handleReply = (commentId: string, content: string) => {
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === commentId
-          ? {
-              ...c,
-              replies: [
-                ...c.replies,
-                {
-                  id: Math.random().toString(36).substr(2, 9),
-                  author: "You",
-                  content,
-                  createdAt: "Just now",
-                },
-              ],
-            }
-          : c
-      )
-    );
-  };
+  // WebSocket integration for presence
+  const { users } = useWebSocket(documentId, userId);
 
-  const handleResolve = (commentId: string) => {
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === commentId
-          ? { ...c, status: c.status === "open" ? "resolved" : "open" }
-          : c
-      )
-    );
-  };
+  useEffect(() => {
+    fetchComments();
+  }, [documentId]);
 
-  const handleDelete = (commentId: string) => {
-    setComments((prev) => prev.filter((c) => c.id !== commentId));
-  };
+  async function fetchComments() {
+    try {
+      const data = await apiFetch<any[]>(`/api/documents/${documentId}/comments`);
+      setComments(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load comments");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAddComment(content: string) {
+    try {
+      const newComment = await apiFetch(`/api/documents/${documentId}/comments`, {
+        method: "POST",
+        body: { content },
+      });
+      setComments((prev) => [...prev, newComment]);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function handleReply(commentId: string, content: string) {
+    try {
+      const reply = await apiFetch(`/api/comments/${commentId}/replies`, {
+        method: "POST",
+        body: { content },
+      });
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId ? { ...c, replies: [...c.replies, reply] } : c
+        )
+      );
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function handleResolve(commentId: string) {
+    try {
+      const updated = await apiFetch(`/api/comments/${commentId}/resolve`, {
+        method: "POST",
+      });
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? updated : c))
+      );
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function handleDelete(commentId: string) {
+    try {
+      await apiFetch(`/api/comments/${commentId}`, { method: "DELETE" });
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  if (loading) return <p>Loading comments...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <MainLayout>
       <div className="mx-auto max-w-[900px]">
-        <h1 className="mb-6 text-2xl font-semibold">Comments</h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Comments</h1>
+          <PresenceIndicator activeCount={users.length} />
+        </div>
         <div className="h-[600px] rounded-2xl border border-[var(--border)] bg-white">
           <CommentThread
             comments={comments}

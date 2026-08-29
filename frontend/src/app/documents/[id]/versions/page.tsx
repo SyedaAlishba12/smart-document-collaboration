@@ -1,42 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import VersionHistoryPanel from "@/components/versions/VersionHistoryPanel";
 import VersionDiffViewer from "@/components/versions/VersionDiffViewer";
 import { useParams } from "next/navigation";
+import apiFetch from "@/lib/api";
 
 export default function VersionsPage() {
   const params = useParams();
   const documentId = params.id as string;
 
-  const [versions, setVersions] = useState([
-    {
-      id: "v1",
-      versionNumber: 2,
-      author: "Zainab Bibi",
-      createdAt: "2h ago",
-      isLatest: true,
-    },
-    {
-      id: "v2",
-      versionNumber: 1,
-      author: "Syeda Alishba",
-      createdAt: "5h ago",
-      isLatest: false,
-    },
-  ]);
-
+  const [versions, setVersions] = useState<any[]>([]);
   const [viewingVersion, setViewingVersion] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleRestore = (versionId: string) => {
-    // Add API call here
-    alert(`Restore version ${versionId}`);
-  };
+  useEffect(() => {
+    fetchVersions();
+  }, [documentId]);
 
-  const handleView = (versionId: string) => {
+  async function fetchVersions() {
+    try {
+      const data = await apiFetch<any[]>(`/api/documents/${documentId}/versions`);
+      setVersions(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRestore(versionId: string) {
+    try {
+      const updated = await apiFetch(`/api/documents/${documentId}/versions/${versionId}/restore`, {
+        method: "POST",
+      });
+      alert("Version restored successfully");
+      fetchVersions(); // refresh list
+    } catch (err: any) {
+      alert(err.message);
+    }
+  }
+
+  async function handleView(versionId: string) {
+    // Optional: fetch specific version detail for diff
     setViewingVersion(versionId);
-  };
+  }
+
+  if (loading) return <p>Loading versions...</p>;
 
   return (
     <MainLayout>
@@ -45,7 +56,7 @@ export default function VersionsPage() {
         <div className="h-[600px] rounded-2xl border border-[var(--border)] bg-white">
           {viewingVersion ? (
             <VersionDiffViewer
-              oldContent="Old version content"
+              oldContent="Old version content" // You'll need to fetch actual version data
               newContent="New version content"
               onClose={() => setViewingVersion(null)}
             />
