@@ -1,90 +1,379 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import MainLayout from '@/components/layout/MainLayout';
+import Header from '@/components/layout/Header';
+import { Users, Plus, Trash2, Edit2, UserMinus } from 'lucide-react';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
-interface Team {
+interface TeamMember {
+  id: string;
+  team_id: string;
+  user_id: string;
+  role: string;
+  joined_at: string;
+}
+
+interface TeamItem {
   id: string;
   name: string;
   description?: string;
+  workspace_id?: string;
+  team_members?: TeamMember[];
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+
 export default function TeamsPage() {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [teamName, setTeamName] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [teams, setTeams] = useState<TeamItem[]>([]);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamDesc, setNewTeamDesc] = useState('');
+  
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingDesc, setEditingDesc] = useState('');
 
+  const [managingTeamId, setManagingTeamId] = useState<string | null>(null);
+  const [newMemberUserId, setNewMemberUserId] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState('member');
+
+  const [error, setError] = useState('');
+  const [workspaceId, setWorkspaceId] = useState<string>('');
+  const router = useRouter();
+
+  // 1. Initialize Authentication Token and Dynamic Workspace ID
   useEffect(() => {
-    fetchTeams();
-  }, []);
+    const initWorkspaceAndToken = async () => {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      
+      if (!token) {
+        setError('Authentication token missing. Please log in again.');
+        router.push('/login');
+        return;
+      }
 
+      // Set global authorization header for axios requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/workspaces`);
+        const workspaces = res.data.data || res.data || [];
+        
+        if (Array.isArray(workspaces) && workspaces.length > 0) {
+          const validId = workspaces[0].id;
+          setWorkspaceId(validId);
+          localStorage.setItem('workspace_id', validId);
+          return;
+        }
+        setError('No active workspaces found for this user account.');
+      } catch (err: any) {
+        console.error('Failed to fetch workspaces:', err);
+        setError('Could not retrieve your workspace. Please check your connection or re-login.');
+      }
+    };
+
+    initWorkspaceAndToken();
+  }, [router]);
+
+  // 2. Fetch Teams for the active workspace
   const fetchTeams = async () => {
+    if (!workspaceId) return;
     try {
-      const response = await axios.get('http://localhost:8000/api/teams');
-      setTeams(response.data.data || []);
-    } catch (error) {
-      console.error('Error fetching teams:', error);
-    } finally {
-      setLoading(false);
+      setError('');
+      const response = await axios.get(`${API_BASE_URL}/api/teams?workspace_id=${workspaceId}`);
+      const data = response.data.data || response.data || [];
+      if (Array.isArray(data)) {
+        setTeams(data);
+      }
+    } catch (err: any) {
+      console.warn('Fetch teams error:', err);
+      setError(err.response?.data?.detail || 'Failed to load teams from server.');
     }
   };
 
+  useEffect(() => {
+    if (workspaceId) {
+      fetchTeams();
+    }
+  }, [workspaceId]);
+
+  // 3. Handle creation of a new team
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teamName.trim()) return;
+    if (!newTeamName.trim() || !workspaceId) return;
+
+    const teamName = newTeamName.trim();
+    const teamDesc = newTeamDesc.trim();
+
+    setNewTeamName('');
+    setNewTeamDesc('');
 
     try {
-      await axios.post('http://localhost:8000/api/teams', { name: teamName });
-      setTeamName('');
-      fetchTeams();
-    } catch (error) {
-      console.error('Error creating team:', error);
+      const response = await axios.post(`${API_BASE_URL}/api/teams`, {
+        workspace_id: workspaceId,
+        name: teamName,
+        description: teamDesc || undefined,
+      });
+      
+      if (response.data) {
+        await fetchTeams();
+      }
+    } catch (err: any) {
+      console.error('Create team error:', err.response?.data || err.message);
+      setError(err.response?.data?.detail || 'Failed to create team.');
+    }
+  };
+
+  // 4. Handle deletion of an existing team
+  const handleDeleteTeam = async (teamId: string) => {
+    if (!window.confirm('Are you sure you want to delete this team?')) return;
+
+    try {
+      await axios.delete(`${API_BASE_URL}/api/teams/${teamId}`);
+      setTeams((prev) => prev.filter((t) => t.id !== teamId));
+    } catch (err: any) {
+      console.error('Delete team error:', err);
+      alert(err.response?.data?.detail || 'Failed to delete team.');
+    }
+  };
+
+  // 5. Handle updating an existing team details
+  const handleUpdateTeam = async (teamId: string) => {
+    if (!editingName.trim()) return;
+
+    try {
+      await axios.put(`${API_BASE_URL}/api/teams/${teamId}`, {
+        name: editingName.trim(),
+        description: editingDesc.trim() || undefined,
+      });
+      setTeams((prev) =>
+        prev.map((t) => (t.id === teamId ? { ...t, name: editingName.trim(), description: editingDesc.trim() } : t))
+      );
+      setEditingTeamId(null);
+    } catch (err: any) {
+      console.error('Update team error:', err);
+      alert(err.response?.data?.detail || 'Failed to update team.');
+    }
+  };
+
+  // 6. Handle adding a member to a team
+  const handleAddMember = async (teamId: string) => {
+    if (!newMemberUserId.trim()) return;
+    const userIdInput = newMemberUserId.trim();
+
+    try {
+      await axios.post(`${API_BASE_URL}/api/teams/${teamId}/members`, {
+        user_id: userIdInput,
+        role: newMemberRole,
+      });
+      await fetchTeams();
+      setNewMemberUserId('');
+    } catch (err: any) {
+      console.error('Add member error:', err);
+      setError(err.response?.data?.detail || 'Failed to add team member.');
+    }
+  };
+
+  // 7. Handle removing a member from a team
+  const handleRemoveMember = async (teamId: string, userId: string) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/api/teams/${teamId}/members/${userId}`);
+      await fetchTeams();
+    } catch (err: any) {
+      console.error('Remove member error:', err);
+      alert(err.response?.data?.detail || 'Failed to remove team member.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFA] p-8 text-[#1A1A1A]">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Teams</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage collaborative teams and member access.</p>
-          </div>
-          
-          <form onSubmit={handleCreateTeam} className="flex gap-2">
+    <MainLayout>
+      <div className="mx-auto max-w-[1400px]">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <Header
+            eyebrow="Workspace"
+            title="Team Management"
+            description="Create collaborative teams, assign roles, and manage members."
+          />
+
+          <form onSubmit={handleCreateTeam} className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               placeholder="Team name..."
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              className="px-4 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
+              value={newTeamName}
+              onChange={(e) => setNewTeamName(e.target.value)}
+              className="px-3 py-2 text-xs bg-white border border-[var(--border)] rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+            />
+            <input
+              type="text"
+              placeholder="Description (optional)..."
+              value={newTeamDesc}
+              onChange={(e) => setNewTeamDesc(e.target.value)}
+              className="px-3 py-2 text-xs bg-white border border-[var(--border)] rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
             />
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition"
+              disabled={!newTeamName.trim() || !workspaceId}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-[var(--primary)] rounded-xl hover:opacity-90 transition disabled:opacity-50 cursor-pointer"
             >
-              + Create Team
+              <Plus className="h-4 w-4" /> Create Team
             </button>
           </form>
         </div>
 
-        {loading ? (
-          <div className="text-sm text-gray-400">Loading teams...</div>
-        ) : teams.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center text-gray-400 text-sm">
-            No teams found. Create your first team above.
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl p-3">
+            {error}
+          </div>
+        )}
+
+        {teams.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-[220px] rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-8 text-center text-xs text-[var(--muted)]">
+            <Users className="h-8 w-8 text-[var(--muted-light)] mb-2" />
+            <p>No teams found in this workspace. Create one above.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {teams.map((team) => (
-              <div key={team.id} className="bg-white border border-gray-200/80 rounded-xl p-5 shadow-sm">
-                <h3 className="font-semibold text-sm text-gray-900">{team.name}</h3>
-                <p className="text-xs text-gray-500 mt-1">Collaborative workspace team</p>
+              <div key={team.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
+                      <Users className="h-4 w-4" />
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingTeamId(team.id);
+                          setEditingName(team.name);
+                          setEditingDesc(team.description || '');
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition cursor-pointer"
+                        title="Edit Team"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteTeam(team.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
+                        title="Delete Team"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {editingTeamId === team.id ? (
+                    <div className="mt-3 flex flex-col gap-2">
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className="w-full px-2 py-1 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                        placeholder="Team name"
+                      />
+                      <input
+                        type="text"
+                        value={editingDesc}
+                        onChange={(e) => setEditingDesc(e.target.value)}
+                        className="w-full px-2 py-1 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                        placeholder="Description"
+                      />
+                      <button
+                        onClick={() => handleUpdateTeam(team.id)}
+                        className="px-2.5 py-1 text-xs bg-[var(--primary)] text-white rounded-lg self-end cursor-pointer"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-4">
+                      <h3 className="text-sm font-semibold text-[var(--foreground)] truncate">{team.name}</h3>
+                      <p className="text-xs text-[var(--muted)] mt-1">{team.description || 'No description provided.'}</p>
+                    </div>
+                  )}
+
+                  {/* Members Section */}
+                  <div className="mt-4 pt-3 border-t border-[var(--border)]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-[var(--foreground)]">
+                        Members ({team.team_members?.length || 0})
+                      </span>
+                      <button
+                        onClick={() => setManagingTeamId(managingTeamId === team.id ? null : team.id)}
+                        className="text-[11px] text-[var(--primary)] hover:underline font-medium cursor-pointer"
+                      >
+                        {managingTeamId === team.id ? 'Close' : '+ Add Member'}
+                      </button>
+                    </div>
+
+                    {managingTeamId === team.id && (
+                      <div className="mb-3 p-2.5 bg-gray-50 border rounded-xl flex flex-col gap-2 text-xs">
+                        <input
+                          type="text"
+                          placeholder="User UUID..."
+                          value={newMemberUserId}
+                          onChange={(e) => setNewMemberUserId(e.target.value)}
+                          className="w-full px-2 py-1 bg-white border rounded-lg text-xs"
+                        />
+                        <div className="flex gap-2">
+                          <select
+                            value={newMemberRole}
+                            onChange={(e) => setNewMemberRole(e.target.value)}
+                            className="w-full px-2 py-1 bg-white border rounded-lg text-xs cursor-pointer"
+                          >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          <button
+                            onClick={() => handleAddMember(team.id)}
+                            className="px-3 py-1 bg-[var(--primary)] text-white rounded-lg whitespace-nowrap cursor-pointer"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="max-h-28 overflow-y-auto space-y-1.5">
+                      {team.team_members && team.team_members.length > 0 ? (
+                        team.team_members.map((member) => (
+                          <div key={member.id} className="flex items-center justify-between text-[11px] bg-white p-1.5 rounded-lg border">
+                            <span className="truncate max-w-[120px] text-gray-700" title={member.user_id}>
+                              ID: {member.user_id.slice(0, 8)}...
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600 font-medium capitalize">
+                                {member.role}
+                              </span>
+                              <button
+                                onClick={() => handleRemoveMember(team.id, member.user_id)}
+                                className="text-red-500 hover:text-red-700 cursor-pointer"
+                                title="Remove member"
+                              >
+                                <UserMinus className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[11px] text-[var(--muted-light)] italic">No members added yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-[var(--border)] text-[10px] text-[var(--muted-light)] flex justify-between">
+                  <span>Team ID: {team.id.slice(0, 8)}...</span>
+                  <span>Active</span>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </MainLayout>
   );
 }

@@ -36,7 +36,7 @@ class File(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False
 )
- 
+    
     # Relationships
     uploader = relationship("User", back_populates="files")
     document_attachments = relationship("DocumentAttachment", back_populates="file", cascade="all, delete-orphan")
