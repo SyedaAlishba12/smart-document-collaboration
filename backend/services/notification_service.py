@@ -1,12 +1,7 @@
-﻿"""
-Notification service interface.
+"""
+Notification service — real async SQLAlchemy 2.0 implementations.
 
 All functions are async-only (team rule: no sync SQLAlchemy anywhere).
-
-Function bodies raise NotImplementedError; they are scaffolded here for
-interface review.  Implementations land once:
-  - The shared skeleton (User) is merged to develop.
-  - Alembic migrations for the notifications table have been applied.
 
 Design notes
 ------------
@@ -23,6 +18,7 @@ Design notes
 import uuid
 from typing import Optional
 
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.notification import Notification, NotificationType
@@ -54,7 +50,18 @@ async def create_notification(
     Returns:
         The newly created Notification ORM instance.
     """
-    raise NotImplementedError
+    notif = Notification(
+        user_id=user_id,
+        type=notification_type,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        message=message,
+        is_read=False,
+    )
+    db.add(notif)
+    await db.flush()
+    await db.refresh(notif)
+    return notif
 
 
 async def get_user_notifications(
@@ -78,7 +85,18 @@ async def get_user_notifications(
     Returns:
         List of Notification instances ordered by created_at DESC.
     """
-    raise NotImplementedError
+    stmt = (
+        select(Notification)
+        .where(Notification.user_id == user_id)
+        .order_by(Notification.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    if unread_only:
+        stmt = stmt.where(Notification.is_read.is_(False))
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 
 async def mark_as_read(
@@ -103,7 +121,23 @@ async def mark_as_read(
     Raises:
         LookupError: if no matching notification exists for (notification_id, user_id).
     """
-    raise NotImplementedError
+    result = await db.execute(
+        select(Notification)
+        .where(
+            Notification.id == notification_id,
+            Notification.user_id == user_id,
+        )
+        .limit(1)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise LookupError(
+            f"Notification {notification_id!r} not found for user {user_id!r}."
+        )
+    row.is_read = True
+    await db.flush()
+    await db.refresh(row)
+    return row
 
 
 async def mark_all_as_read(
@@ -123,7 +157,17 @@ async def mark_all_as_read(
         The number of rows updated (useful for confirming the operation in
         the API response envelope).
     """
-    raise NotImplementedError
+    result = await db.execute(
+        update(Notification)
+        .where(
+            Notification.user_id == user_id,
+            Notification.is_read.is_(False),
+        )
+        .values(is_read=True)
+        .execution_options(synchronize_session=False)
+    )
+    await db.flush()
+    return result.rowcount
 
 
 async def delete_notification(
@@ -145,4 +189,18 @@ async def delete_notification(
     Raises:
         LookupError: if no matching notification exists for (notification_id, user_id).
     """
-    raise NotImplementedError
+    result = await db.execute(
+        select(Notification)
+        .where(
+            Notification.id == notification_id,
+            Notification.user_id == user_id,
+        )
+        .limit(1)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        raise LookupError(
+            f"Notification {notification_id!r} not found for user {user_id!r}."
+        )
+    await db.delete(row)
+    await db.flush()
