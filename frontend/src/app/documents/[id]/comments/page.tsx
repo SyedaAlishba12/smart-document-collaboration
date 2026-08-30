@@ -12,24 +12,68 @@ export default function CommentsPage() {
   const params = useParams();
   const documentId = params.id as string;
 
-  // Get current user ID from localStorage (temporary, replace with auth context)
-  const userId = typeof window !== "undefined" ? localStorage.getItem("user_id") || "00000000-0000-0000-0000-000000000001" : "00000000-0000-0000-0000-000000000001";
+  const userId =
+    typeof window !== "undefined"
+      ? localStorage.getItem("user_id") || "00000000-0000-0000-0000-000000000001"
+      : "00000000-0000-0000-0000-000000000001";
 
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
 
-  // WebSocket integration for presence
   const { users } = useWebSocket(documentId, userId);
 
   useEffect(() => {
     fetchComments();
+    fetchUsers();
   }, [documentId]);
+
+  async function fetchUsers() {
+    try {
+      const response = await apiFetch<any>(`/api/search/users?query=`);
+      const users = response.data || [];
+      const map: Record<string, string> = {};
+      users.forEach((u: any) => {
+        map[u.id] = u.full_name || u.name || u.email;
+      });
+      setUserMap(map);
+    } catch (err) {
+      // fallback mock
+      setUserMap({
+        "00000000-0000-0000-0000-000000000001": "You",
+      });
+    }
+  }
 
   async function fetchComments() {
     try {
       const data = await apiFetch<any[]>(`/api/documents/${documentId}/comments`);
-      setComments(data);
+      const commentsWithReplies = await Promise.all(
+        data.map(async (comment) => {
+          let replies: any[] = [];
+          try {
+            const replyData = await apiFetch<any[]>(`/api/comments/${comment.id}/replies`);
+            replies = replyData.map((r: any) => ({
+              id: r.id,
+              author: userMap[r.user_id] || "User",
+              content: r.content,
+              createdAt: new Date(r.created_at).toLocaleString(),
+            }));
+          } catch (e) {
+            // ignore
+          }
+          return {
+            id: comment.id,
+            author: userMap[comment.user_id] || "User",
+            content: comment.content,
+            createdAt: new Date(comment.created_at).toLocaleString(),
+            status: comment.status,
+            replies: replies,
+          };
+        })
+      );
+      setComments(commentsWithReplies);
     } catch (err: any) {
       setError(err.message || "Failed to load comments");
     } finally {
@@ -39,11 +83,21 @@ export default function CommentsPage() {
 
   async function handleAddComment(content: string) {
     try {
-      const newComment = await apiFetch(`/api/documents/${documentId}/comments`, {
+      const newComment = await apiFetch<any>(`/api/documents/${documentId}/comments`, {
         method: "POST",
         body: { content },
       });
-      setComments((prev) => [...prev, newComment]);
+      setComments((prev) => [
+        ...prev,
+        {
+          id: newComment.id,
+          author: userMap[newComment.user_id] || "You",
+          content: newComment.content,
+          createdAt: new Date(newComment.created_at).toLocaleString(),
+          status: newComment.status,
+          replies: [],
+        },
+      ]);
     } catch (err: any) {
       alert(err.message);
     }
@@ -51,13 +105,26 @@ export default function CommentsPage() {
 
   async function handleReply(commentId: string, content: string) {
     try {
-      const reply = await apiFetch(`/api/comments/${commentId}/replies`, {
+      const reply = await apiFetch<any>(`/api/comments/${commentId}/replies`, {
         method: "POST",
         body: { content },
       });
       setComments((prev) =>
         prev.map((c) =>
-          c.id === commentId ? { ...c, replies: [...c.replies, reply] } : c
+          c.id === commentId
+            ? {
+                ...c,
+                replies: [
+                  ...c.replies,
+                  {
+                    id: reply.id,
+                    author: "You",
+                    content: reply.content,
+                    createdAt: "Just now",
+                  },
+                ],
+              }
+            : c
         )
       );
     } catch (err: any) {
@@ -67,11 +134,13 @@ export default function CommentsPage() {
 
   async function handleResolve(commentId: string) {
     try {
-      const updated = await apiFetch(`/api/comments/${commentId}/resolve`, {
+      const updated = await apiFetch<any>(`/api/comments/${commentId}/resolve`, {
         method: "POST",
       });
       setComments((prev) =>
-        prev.map((c) => (c.id === commentId ? updated : c))
+        prev.map((c) =>
+          c.id === commentId ? { ...c, status: updated.status } : c
+        )
       );
     } catch (err: any) {
       alert(err.message);

@@ -13,6 +13,7 @@ export default function VersionsPage() {
 
   const [versions, setVersions] = useState<any[]>([]);
   const [viewingVersion, setViewingVersion] = useState<string | null>(null);
+  const [diffData, setDiffData] = useState<{ oldContent: string; newContent: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,15 +37,26 @@ export default function VersionsPage() {
         method: "POST",
       });
       alert("Version restored successfully");
-      fetchVersions(); // refresh list
+      fetchVersions();
     } catch (err: any) {
       alert(err.message);
     }
   }
 
   async function handleView(versionId: string) {
-    // Optional: fetch specific version detail for diff
     setViewingVersion(versionId);
+    // Fetch the specific version content
+    try {
+      const version = await apiFetch<any>(`/api/documents/${documentId}/versions/${versionId}`);
+      // Fetch the latest version to compare with
+      const latestVersion = await apiFetch<any>(`/api/documents/${documentId}/versions/latest`);
+      setDiffData({
+        oldContent: version.content || "Empty",
+        newContent: latestVersion.content || "Empty",
+      });
+    } catch (err) {
+      setDiffData({ oldContent: "Unable to load", newContent: "Unable to load" });
+    }
   }
 
   if (loading) return <p>Loading versions...</p>;
@@ -56,8 +68,8 @@ export default function VersionsPage() {
         <div className="h-[600px] rounded-2xl border border-[var(--border)] bg-white">
           {viewingVersion ? (
             <VersionDiffViewer
-              oldContent="Old version content" // You'll need to fetch actual version data
-              newContent="New version content"
+              oldContent={diffData?.oldContent}
+              newContent={diffData?.newContent}
               onClose={() => setViewingVersion(null)}
             />
           ) : (

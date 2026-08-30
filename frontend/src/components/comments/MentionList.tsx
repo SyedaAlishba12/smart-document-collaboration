@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import Avatar from "@/components/ui/Avatar";
 
 interface MentionUser {
@@ -14,29 +13,11 @@ interface MentionListProps {
   onSelect: (user: MentionUser) => void;
 }
 
-export default function MentionList({
-  users,
-  onSelect,
-}: MentionListProps) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        // If you want to close, you can call onClose, but we keep it simple
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
+export default function MentionList({ users, onSelect }: MentionListProps) {
   if (users.length === 0) return null;
 
   return (
-    <div
-      ref={ref}
-      className="absolute z-50 mt-1 w-64 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[var(--shadow-lg)]"
-    >
+    <div className="absolute z-50 mt-1 w-64 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[var(--shadow-lg)]">
       <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
         Mention someone
       </div>

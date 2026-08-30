@@ -1,12 +1,18 @@
 import re
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.comment import Comment
 from models.comment_reply import CommentReply
 from schemas.comment import CommentCreate, CommentReplyCreate, CommentUpdate
+
+from services.permission_service import can_comment
+from services.notification_service import create_notification
+from models.notification import NotificationType
+from models.user import User
 
 # Syeda's Activity Log
 from models.document import Document
@@ -23,6 +29,13 @@ class CommentService:
         user_id: UUID,
         data: CommentCreate,
     ) -> Comment:
+        # Permission check
+        if not await can_comment(session, user_id, "document", document_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not allowed to comment on this document",
+            )
+
         comment = Comment(
             document_id=document_id,
             user_id=user_id,
@@ -33,29 +46,40 @@ class CommentService:
         await session.commit()
         await session.refresh(comment)
 
-        # ---- Activity Log (Syeda) ----
+        # Activity log
         try:
             doc = await session.get(Document, document_id)
             if doc:
-                await create_activity_log(session, ActivityLogCreate(
-                    user_id=user_id,
-                    workspace_id=doc.workspace_id,
-                    document_id=document_id,
-                    action="comment_created",
-                    description=f"Added a comment: {data.content[:50]}..."
-                ))
+                await create_activity_log(
+                    session,
+                    ActivityLogCreate(
+                        user_id=user_id,
+                        workspace_id=doc.workspace_id,
+                        document_id=document_id,
+                        action="comment_created",
+                        description=f"Added a comment: {data.content[:50]}...",
+                    ),
+                )
         except Exception as e:
             print(f"[Activity Log Error]: {e}")
 
-        # ---- Mentions (Taha - Stub safe) ----
-        try:
-            from services.notification_service import create_notification
-            from models.notification import NotificationType
-            mentions = re.findall(r"@(\w+)", data.content)
-            for username in mentions:
-                print(f"[MOCK] Notify @{username} about comment {comment.id}")
-        except (NotImplementedError, ImportError):
-            pass
+        # Mentions → notifications
+        mentions = re.findall(r"@(\w+)", data.content)
+        for username in mentions:
+            # find user by full_name (or username - adjust as needed)
+            result = await session.execute(
+                select(User).where(User.full_name == username)
+            )
+            mentioned_user = result.scalar_one_or_none()
+            if mentioned_user:
+                await create_notification(
+                    db=session,
+                    user_id=mentioned_user.id,
+                    notification_type=NotificationType.mention,
+                    resource_type="comment",
+                    resource_id=comment.id,
+                    message=f"You were mentioned in a comment: {data.content}",
+                )
 
         return comment
 
@@ -117,6 +141,7 @@ class CommentService:
         user_id: UUID,
         data: CommentReplyCreate,
     ) -> CommentReply:
+        # Ensure the parent comment exists and permission is checked (could be inherited)
         reply = CommentReply(
             comment_id=comment_id,
             user_id=user_id,
@@ -126,15 +151,22 @@ class CommentService:
         await session.commit()
         await session.refresh(reply)
 
-        # ---- Mentions (Taha - Stub safe) ----
-        try:
-            from services.notification_service import create_notification
-            from models.notification import NotificationType
-            mentions = re.findall(r"@(\w+)", data.content)
-            for username in mentions:
-                print(f"[MOCK] Notify @{username} about reply {reply.id}")
-        except (NotImplementedError, ImportError):
-            pass
+        # Mentions → notifications
+        mentions = re.findall(r"@(\w+)", data.content)
+        for username in mentions:
+            result = await session.execute(
+                select(User).where(User.full_name == username)
+            )
+            mentioned_user = result.scalar_one_or_none()
+            if mentioned_user:
+                await create_notification(
+                    db=session,
+                    user_id=mentioned_user.id,
+                    notification_type=NotificationType.mention,
+                    resource_type="reply",
+                    resource_id=reply.id,
+                    message=f"You were mentioned in a reply: {data.content}",
+                )
 
         return reply
 

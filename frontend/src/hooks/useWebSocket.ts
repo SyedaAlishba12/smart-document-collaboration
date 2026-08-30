@@ -13,8 +13,9 @@ export function useWebSocket(documentId: string, userId: string) {
   const [cursors, setCursors] = useState<Record<string, { x: number; y: number }>>({});
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
     const ws = new WebSocket(
-      `ws://localhost:8000/ws/documents/${documentId}?token=${localStorage.getItem("access_token")}`
+      `ws://localhost:8000/ws/documents/${documentId}?token=${token}`
     );
 
     ws.onmessage = (event) => {

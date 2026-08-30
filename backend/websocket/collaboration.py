@@ -1,10 +1,11 @@
 from uuid import UUID
-
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from database.session import AsyncSessionLocal
 from websocket.connection_manager import manager
 from services.collaboration_service import CollaborationService
-
+from services.permission_service import can_edit
 from common.security import decode_token
 
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
@@ -16,27 +17,25 @@ async def document_collaboration(
     document_id: UUID,
     token: str = Query(...),
 ):
-    # 1. Authenticate User
+    # 1. Authenticate via JWT token
     payload = decode_token(token)
     if not payload or "sub" not in payload:
-        await websocket.close(code=1008)  # Policy Violation
+        await websocket.close(code=1008)  # Policy violation
         return
     user_id = UUID(payload["sub"])
 
-    # 2. Permission Check (Taha's stub - safely handled)
-    try:
-        from services.permission_service import can_edit
-        # Uncomment once Taha implements:
-        # if not await can_edit(db, user_id, "document", document_id):
-        #     await websocket.close(code=1003)
-        #     return
-    except (NotImplementedError, ImportError):
-        pass
+    # 2. Permission check (only editors/owners can edit, viewers can view? we use can_edit for now)
+    async with AsyncSessionLocal() as db:
+        allowed = await can_edit(db, user_id, "document", document_id)
+    if not allowed:
+        await websocket.close(code=1003)  # Forbidden
+        return
 
-    # 3. Connect to Room
+    # 3. Connect to the collaboration room
     await manager.connect(document_id, user_id, websocket)
 
     try:
+        # Send join confirmation to the connecting user
         await manager.send_personal(
             document_id,
             user_id,
@@ -45,11 +44,14 @@ async def document_collaboration(
                 "data": {
                     "document_id": str(document_id),
                     "user_id": str(user_id),
-                    "active_users": [str(u) for u in manager.get_document_users(document_id)],
+                    "active_users": [
+                        str(u) for u in manager.get_document_users(document_id)
+                    ],
                 },
             },
         )
 
+        # Notify others that a user joined
         await manager.broadcast(
             document_id,
             {
@@ -62,6 +64,7 @@ async def document_collaboration(
             exclude_user_id=user_id,
         )
 
+        # Listen for messages
         while True:
             message = await websocket.receive_json()
             event = message.get("event")
@@ -69,7 +72,12 @@ async def document_collaboration(
 
             if event == "document:leave":
                 break
-            elif event in {"document:update", "document:cursor", "document:presence", "document:save"}:
+            elif event in {
+                "document:update",
+                "document:cursor",
+                "document:presence",
+                "document:save",
+            }:
                 await CollaborationService.broadcast_event(
                     document_id, user_id, event, data
                 )
