@@ -44,10 +44,12 @@ class Workspace(Base):
     members: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember", back_populates="workspace", cascade="all, delete-orphan"
     )
-
-    # Cross-module relationships (folder/team live in Zainab's models).
-    # Left commented out here since Zainab owns folder.py / team.py —
-    # she should add the reverse side (`workspace = relationship(...)`)
-    # on her end rather than this file reaching into her models.
-    # folders: Mapped[list["Folder"]] = relationship("Folder", back_populates="workspace")
-    # teams: Mapped[list["Team"]] = relationship("Team", back_populates="workspace")
+    documents: Mapped[list["Document"]] = relationship(
+        "Document", back_populates="workspace"
+    )
+    folders: Mapped[list["Folder"]] = relationship(
+        "Folder", back_populates="workspace"
+    )
+    teams: Mapped[list["Team"]] = relationship(
+        "Team", back_populates="workspace"
+    )

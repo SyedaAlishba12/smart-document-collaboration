@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import api from "@/lib/api_client";
+import Modal from "@/components/ui/Modal";
+import Input from "@/components/ui/Input";
+import Button from "@/components/ui/Button";
+import Alert from "@/components/ui/Alert";
 import type { Workspace } from "@/types/workspace";
 
 export default function CreateWorkspaceModal({
+  open,
   onClose,
   onCreated,
 }: {
+  open: boolean;
   onClose: () => void;
   onCreated: (workspace: Workspace) => void;
 }) {
@@ -23,6 +29,8 @@ export default function CreateWorkspaceModal({
     try {
       const res = await api.post("/api/workspaces", { name, description });
       onCreated(res.data);
+      setName("");
+      setDescription("");
       onClose();
     } catch {
       setError("Could not create workspace.");
@@ -32,38 +40,35 @@ export default function CreateWorkspaceModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-        <h2 className="text-lg font-semibold mb-4">New workspace</h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <input
-            placeholder="Workspace name"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          <textarea
-            placeholder="Description (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2 mt-2">
-            <button type="button" onClick={onClose} className="px-3 py-2 text-sm text-gray-600">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-md bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
-            >
-              {loading ? "Creating..." : "Create"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal open={open} onClose={onClose} title="New workspace">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Input
+          id="workspace_name"
+          label="Workspace name"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Marketing Team"
+        />
+        <Input
+          id="workspace_description"
+          label="Description (optional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="What's this workspace for?"
+        />
+
+        {error && <Alert variant="error" message={error} />}
+
+        <div className="mt-2 flex justify-end gap-3">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Creating..." : "Create"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

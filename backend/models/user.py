@@ -25,13 +25,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
-
-    # NOTE: currently free-text per the ERD. Flag with Sayeel before he
-    # starts wiring WebSocket presence — if this column is meant to be
-    # the source of truth for online/offline status, it should become
-    # an enum and he should write to it rather than keeping separate state.
     status: Mapped[str | None] = mapped_column(String, nullable=True)
-
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -50,4 +44,13 @@ class User(Base):
     )
     workspace_memberships: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember", back_populates="user"
+    )
+    files: Mapped[list["File"]] = relationship(
+        "File", back_populates="uploader"
+    )
+    documents: Mapped[list["Document"]] = relationship(
+        "Document", back_populates="owner"
+    )
+    team_members: Mapped[list["TeamMember"]] = relationship(
+        "TeamMember", back_populates="user"
     )

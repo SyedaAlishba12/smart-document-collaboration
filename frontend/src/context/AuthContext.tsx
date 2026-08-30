@@ -16,7 +16,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   initials: string;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser | null>;
   logout: () => void;
 }
 
@@ -36,17 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const refreshUser = useCallback(async () => {
-    const token = typeof window !== "undefined" ? sessionStorage.getItem("access_token") : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
     if (!token) {
       setUser(null);
       setLoading(false);
-      return;
+      return null;
     }
     try {
       const res = await api.get("/api/users/me");
       setUser(res.data);
+      return res.data as AuthUser;
     } catch {
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -62,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // even if the call fails, still clear local session
     }
-    sessionStorage.removeItem("access_token");
-    sessionStorage.removeItem("refresh_token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
     setUser(null);
     router.push("/login");
   }, [router]);

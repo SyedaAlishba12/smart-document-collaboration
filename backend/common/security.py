@@ -1,13 +1,17 @@
 """
 Password hashing + JWT helpers shared across auth_service, user_service,
 and the auth middleware. Owned by Fatima as part of the auth module.
+
+Uses bcrypt directly instead of passlib, since passlib's bcrypt backend
+detection is broken against bcrypt>=4.0 (AttributeError: module 'bcrypt'
+has no attribute '__about__').
 """
 import os
+import bcrypt
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 
 SECRET_KEY = os.getenv("SECRET_KEY")  # Make sure this is set in .env
 ALGORITHM = "HS256"
@@ -16,15 +20,17 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 RESET_TOKEN_EXPIRE_MINUTES = 30
 VERIFY_TOKEN_EXPIRE_HOURS = 24
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # bcrypt has a hard 72-byte limit on the input password.
+    password_bytes = password.encode("utf-8")[:72]
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = plain_password.encode("utf-8")[:72]
+    return bcrypt.checkpw(password_bytes, hashed_password.encode("utf-8"))
 
 
 def _create_token(data: dict, expires_delta: timedelta) -> str:

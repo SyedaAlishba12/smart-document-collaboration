@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api_client";
+import { useAuth } from "@/context/AuthContext";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 
 export default function LoginForm() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +22,19 @@ export default function LoginForm() {
     setLoading(true);
     try {
       const res = await api.post("/api/auth/login", { email, password });
-      sessionStorage.setItem("access_token", res.data.access_token);
-      sessionStorage.setItem("refresh_token", res.data.refresh_token);
-      router.push("/dashboard");
+      localStorage.setItem("access_token", res.data.access_token);
+      localStorage.setItem("refresh_token", res.data.refresh_token);
+
+      // Critical: tell the global auth context the user is now logged in
+      // BEFORE navigating, otherwise the dashboard's RequireAuth guard
+      // still sees the old "logged out" state and bounces back to /login.
+      const loggedInUser = await refreshUser();
+
+      if (loggedInUser) {
+        router.push("/dashboard");
+      } else {
+        setError("Login succeeded but we couldn't load your profile. Please try again.");
+      }
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? "Login failed. Check your credentials.");
     } finally {
