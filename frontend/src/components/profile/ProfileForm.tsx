@@ -1,25 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { User as UserIcon } from "lucide-react";
 import api from "@/lib/api_client";
-import type { AuthUser } from "@/types/auth";
+import { useAuth } from "@/context/AuthContext";
+import Input from "@/components/ui/Input";
+import Button from "@/components/ui/Button";
+import Alert from "@/components/ui/Alert";
+import Card from "@/components/ui/Card";
+import Spinner from "@/components/ui/Spinner";
 
 export default function ProfileForm() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user, initials, refreshUser } = useAuth();
   const [fullName, setFullName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get("/api/users/me").then((res) => {
-      setUser(res.data);
-      setFullName(res.data.full_name ?? "");
-      setAvatarUrl(res.data.avatar_url ?? "");
+    if (user) {
+      setFullName(user.full_name ?? "");
+      setAvatarUrl(user.avatar_url ?? "");
       setLoading(false);
-    });
-  }, []);
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,48 +32,57 @@ export default function ProfileForm() {
     setStatus(null);
     try {
       await api.put("/api/users/me", { full_name: fullName, avatar_url: avatarUrl });
-      setStatus("Profile updated.");
+      await refreshUser();
+      setStatus({ type: "success", text: "Profile updated." });
     } catch {
-      setStatus("Could not update profile.");
+      setStatus({ type: "error", text: "Could not update profile." });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <p className="text-sm text-gray-500">Loading profile...</p>;
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-        <input value={user?.email ?? ""} disabled className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500" />
+    <Card>
+      <div className="mb-6 flex items-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--primary-soft)] text-lg font-semibold text-[var(--primary)]">
+          {initials}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[var(--foreground)]">{user?.full_name}</p>
+          <p className="text-xs text-[var(--muted)]">{user?.email}</p>
+        </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-        <input
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Input id="email" label="Email" value={user?.email ?? ""} disabled />
+        <Input
+          id="full_name"
+          label="Full name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Avatar URL</label>
-        <input
+        <Input
+          id="avatar_url"
+          label="Avatar URL"
           value={avatarUrl}
           onChange={(e) => setAvatarUrl(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="https://..."
         />
-      </div>
 
-      {status && <p className="text-sm text-gray-600">{status}</p>}
+        {status && <Alert variant={status.type} message={status.text} />}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="rounded-md bg-blue-600 text-white py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
-      >
-        {saving ? "Saving..." : "Save changes"}
-      </button>
-    </form>
+        <Button type="submit" disabled={saving} className="mt-1 w-full sm:w-fit">
+          {saving ? "Saving..." : "Save changes"}
+        </Button>
+      </form>
+    </Card>
   );
 }
