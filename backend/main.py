@@ -1,10 +1,19 @@
 from fastapi import FastAPI
-from sqlalchemy import text
 
+<<<<<<< HEAD
 from database.session import AsyncSessionLocal
 from routes.permission_routes import router as permission_router
 from routes.notification_routes import router as notification_router
 from routes.search_routes import router as search_router
+=======
+# Import your module routers
+from routes.comment_routes import router as comment_router
+from routes.version_routes import router as version_router
+from routes.collaboration_routes import router as collaboration_router
+
+# Temporarily commented until Fatima provides auth routes
+# from routes.auth_routes import router as auth_router
+>>>>>>> origin/develop
 
 app = FastAPI(
     title="Smart Document Collaboration API",
@@ -16,23 +25,16 @@ app.include_router(permission_router)
 app.include_router(notification_router)
 app.include_router(search_router)
 
+# app.include_router(auth_router)
+app.include_router(comment_router)
+app.include_router(version_router)
+app.include_router(collaboration_router)
+
 
 @app.get("/")
 async def root():
     return {
         "success": True,
-        "message": "Smart Document Collaboration API is running",
+        "message": "Smart Document Collaboration Platform API",
         "data": None,
     }
-
-
-@app.get("/api/health/database")
-async def database_health():
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(text("SELECT 1"))
-
-        return {
-            "success": True,
-            "message": "Database connection successful",
-            "data": result.scalar(),
-        }
