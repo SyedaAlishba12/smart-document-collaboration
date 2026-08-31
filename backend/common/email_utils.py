@@ -6,6 +6,14 @@ Resend SDK directly, so we have one place to change providers later.
 """
 import os
 import resend
+from dotenv import load_dotenv
+
+# Load .env here directly, rather than relying on main.py having already
+# called load_dotenv() by the time this module is imported. Import order
+# (routes -> controllers -> services -> this file) can run before
+# main.py's own load_dotenv() line executes, which left RESEND_API_KEY
+# reading as None even when it was correctly set in .env.
+load_dotenv()
 
 resend.api_key = os.getenv("RESEND_API_KEY")
 

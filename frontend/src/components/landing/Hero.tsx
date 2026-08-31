@@ -4,21 +4,15 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import Button from "@/components/ui/Button";
 import DocumentStackVisual from "@/components/auth/DocumentStackVisual";
+import LiquidBackground from "@/components/shared/LiquidBackground";
 
 export default function Hero() {
   return (
     <section className="relative overflow-hidden pt-40 pb-24">
-      {/* Ambient background glow, tied to the theme's primary/accent colors */}
-      <div
-        className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full opacity-30 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(closest-side, var(--primary-soft), transparent 70%)",
-        }}
-      />
+      <LiquidBackground />
 
-      <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 px-6 lg:grid-cols-2">
-        <div>
+      <div className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 items-center gap-16 px-6 lg:grid-cols-2">
+        <div className="fade-slide-up">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-[var(--foreground-secondary)]">
             <Sparkles className="h-3 w-3 text-[var(--primary)]" />
             Real-time collaboration, built in
@@ -53,7 +47,7 @@ export default function Hero() {
           </p>
         </div>
 
-        <div className="flex justify-center lg:justify-end">
+        <div className="fade-slide-up flex justify-center lg:justify-end" style={{ animationDelay: "0.15s" }}>
           <DocumentStackVisual />
         </div>
       </div>
