@@ -124,8 +124,13 @@ button:disabled {
   background: var(--primary-soft);
   color: var(--foreground);
 }
-<<<<<<< HEAD
-/* Force Tiptap List and Blockquote Styles */
+
+/* =========================================================
+   Force Tiptap List and Blockquote Styles
+   (added by Taha — for share/permissions read-only rendering;
+   flagged for Zainab's review, this touches the editor surface)
+   ========================================================= */
+
 .ProseMirror ul {
   list-style-type: disc !important;
   padding-left: 2rem !important;
@@ -137,6 +142,7 @@ button:disabled {
   padding-left: 2rem !important;
   margin: 1rem 0 !important;
 }
+
 .ProseMirror blockquote {
   border-left: 4px solid #2f6f68 !important;
   background-color: #fcfbf8 !important;
@@ -160,7 +166,6 @@ button:disabled {
   margin-top: 1.25rem !important;
   margin-bottom: 0.5rem !important;
 }
-=======
 
 
 /* =========================================================
@@ -169,13 +174,14 @@ button:disabled {
    ========================================================= */
 
 @keyframes docFloat {
-  0%, 100% {
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z))
-      rotateY(-6deg) rotateX(2deg) translateY(0px);
+
+  0%,
+  100% {
+    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z)) rotateY(-6deg) rotateX(2deg) translateY(0px);
   }
+
   50% {
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z))
-      rotateY(6deg) rotateX(-2deg) translateY(-6px);
+    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z)) rotateY(6deg) rotateX(-2deg) translateY(-6px);
   }
 }
 
@@ -195,8 +201,17 @@ button:disabled {
    ========================================================= */
 
 @keyframes ambientDrift {
-  0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.3; }
-  50% { transform: translate(-50%, -20px) scale(1.15); opacity: 0.45; }
+
+  0%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 0.3;
+  }
+
+  50% {
+    transform: translate(-50%, -20px) scale(1.15);
+    opacity: 0.45;
+  }
 }
 
 .ambient-glow {
@@ -204,8 +219,15 @@ button:disabled {
 }
 
 @keyframes fadeSlideUp {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-slide-up {
@@ -213,8 +235,15 @@ button:disabled {
 }
 
 @keyframes cardStagger {
-  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .card-stagger {
@@ -222,6 +251,7 @@ button:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .ambient-glow,
   .fade-slide-up,
   .card-stagger {
@@ -236,13 +266,14 @@ button:disabled {
    ========================================================= */
 
 @keyframes docFloat {
-  0%, 100% {
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z))
-      rotateY(-6deg) rotateX(2deg) translateY(0px);
+
+  0%,
+  100% {
+    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z)) rotateY(-6deg) rotateX(2deg) translateY(0px);
   }
+
   50% {
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z))
-      rotateY(6deg) rotateX(-2deg) translateY(-6px);
+    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z)) rotateY(6deg) rotateX(-2deg) translateY(-6px);
   }
 }
 
@@ -262,8 +293,17 @@ button:disabled {
    ========================================================= */
 
 @keyframes ambientDrift {
-  0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.3; }
-  50% { transform: translate(-50%, -20px) scale(1.15); opacity: 0.45; }
+
+  0%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 0.3;
+  }
+
+  50% {
+    transform: translate(-50%, -20px) scale(1.15);
+    opacity: 0.45;
+  }
 }
 
 .ambient-glow {
@@ -271,8 +311,15 @@ button:disabled {
 }
 
 @keyframes fadeSlideUp {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-slide-up {
@@ -280,8 +327,15 @@ button:disabled {
 }
 
 @keyframes cardStagger {
-  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .card-stagger {
@@ -289,6 +343,7 @@ button:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .ambient-glow,
   .fade-slide-up,
   .card-stagger {
@@ -303,16 +358,42 @@ button:disabled {
    ========================================================= */
 
 @keyframes liquidMorph1 {
-  0%   { border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%; transform: translate(calc(var(--mx, 0px) * 0.02), calc(var(--my, 0px) * 0.02)) rotate(0deg) scale(1); }
-  33%  { border-radius: 60% 40% 30% 70% / 55% 65% 35% 45%; transform: translate(calc(var(--mx, 0px) * 0.02 + 20px), calc(var(--my, 0px) * 0.02 - 15px)) rotate(6deg) scale(1.08); }
-  66%  { border-radius: 35% 65% 55% 45% / 40% 30% 70% 60%; transform: translate(calc(var(--mx, 0px) * 0.02 - 15px), calc(var(--my, 0px) * 0.02 + 20px)) rotate(-4deg) scale(0.95); }
-  100% { border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%; transform: translate(calc(var(--mx, 0px) * 0.02), calc(var(--my, 0px) * 0.02)) rotate(0deg) scale(1); }
+  0% {
+    border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%;
+    transform: translate(calc(var(--mx, 0px) * 0.02), calc(var(--my, 0px) * 0.02)) rotate(0deg) scale(1);
+  }
+
+  33% {
+    border-radius: 60% 40% 30% 70% / 55% 65% 35% 45%;
+    transform: translate(calc(var(--mx, 0px) * 0.02 + 20px), calc(var(--my, 0px) * 0.02 - 15px)) rotate(6deg) scale(1.08);
+  }
+
+  66% {
+    border-radius: 35% 65% 55% 45% / 40% 30% 70% 60%;
+    transform: translate(calc(var(--mx, 0px) * 0.02 - 15px), calc(var(--my, 0px) * 0.02 + 20px)) rotate(-4deg) scale(0.95);
+  }
+
+  100% {
+    border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%;
+    transform: translate(calc(var(--mx, 0px) * 0.02), calc(var(--my, 0px) * 0.02)) rotate(0deg) scale(1);
+  }
 }
 
 @keyframes liquidMorph2 {
-  0%   { border-radius: 55% 45% 35% 65% / 50% 60% 40% 50%; transform: translate(calc(var(--mx, 0px) * -0.015), calc(var(--my, 0px) * -0.015)) rotate(0deg) scale(1); }
-  50%  { border-radius: 40% 60% 60% 40% / 65% 35% 65% 35%; transform: translate(calc(var(--mx, 0px) * -0.015 - 25px), calc(var(--my, 0px) * -0.015 + 15px)) rotate(-8deg) scale(1.1); }
-  100% { border-radius: 55% 45% 35% 65% / 50% 60% 40% 50%; transform: translate(calc(var(--mx, 0px) * -0.015), calc(var(--my, 0px) * -0.015)) rotate(0deg) scale(1); }
+  0% {
+    border-radius: 55% 45% 35% 65% / 50% 60% 40% 50%;
+    transform: translate(calc(var(--mx, 0px) * -0.015), calc(var(--my, 0px) * -0.015)) rotate(0deg) scale(1);
+  }
+
+  50% {
+    border-radius: 40% 60% 60% 40% / 65% 35% 65% 35%;
+    transform: translate(calc(var(--mx, 0px) * -0.015 - 25px), calc(var(--my, 0px) * -0.015 + 15px)) rotate(-8deg) scale(1.1);
+  }
+
+  100% {
+    border-radius: 55% 45% 35% 65% / 50% 60% 40% 50%;
+    transform: translate(calc(var(--mx, 0px) * -0.015), calc(var(--my, 0px) * -0.015)) rotate(0deg) scale(1);
+  }
 }
 
 .liquid-blob-container {
@@ -365,4 +446,3 @@ button:disabled {
     animation: none;
   }
 }
->>>>>>> origin/feature/auth-workspace-team
