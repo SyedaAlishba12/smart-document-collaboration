@@ -2,6 +2,7 @@
 
 import MainLayout from "@/components/layout/MainLayout";
 import Header from "@/components/layout/Header";
+import RequireAuth from "@/components/auth/RequireAuth";
 
 import {
   FileText,
@@ -35,6 +36,7 @@ const dashboardStats = [
 
 export default function DashboardPage() {
   return (
+    <RequireAuth>
     <MainLayout>
       <div className="mx-auto max-w-[1400px]">
 
@@ -228,5 +230,6 @@ export default function DashboardPage() {
 
       </div>
     </MainLayout>
+    </RequireAuth>
   );
 }

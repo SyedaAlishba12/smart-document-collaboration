@@ -3,6 +3,7 @@
 import {
   Activity,
   Bell,
+  Files,
   FileText,
   Folder,
   HelpCircle,
@@ -12,10 +13,13 @@ import {
   Settings,
   Share2,
   Star,
+  User,
+  Users,
 } from "lucide-react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -41,6 +45,16 @@ const workspaceNavigation = [
     label: "Workspaces",
     icon: LayoutGrid,
     href: "/workspaces",
+  },
+  {
+    label: "Teams",
+    icon: Users,
+    href: "/teams",
+  },
+  {
+    label: "Files",
+    icon: Files,
+    href: "/files",
   },
 ];
 
@@ -72,6 +86,7 @@ export default function Sidebar({
   collapsed = false,
 }: SidebarProps) {
   const pathname = usePathname();
+  const { user, initials } = useAuth();
 
   return (
     <aside
@@ -227,17 +242,17 @@ export default function Sidebar({
               text-[#57534e]
             "
           >
-            SA
+            {initials}
           </div>
 
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold text-[var(--foreground)]">
-                Syeda Alishba
+                {user?.full_name ?? "Loading..."}
               </p>
 
               <p className="truncate text-[10px] text-[var(--muted)]">
-                Account
+                {user?.email ?? "Account"}
               </p>
             </div>
           )}

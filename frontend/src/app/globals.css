@@ -124,3 +124,38 @@ button:disabled {
   background: var(--primary-soft);
   color: var(--foreground);
 }
+/* Force Tiptap List and Blockquote Styles */
+.ProseMirror ul {
+  list-style-type: disc !important;
+  padding-left: 2rem !important;
+  margin: 1rem 0 !important;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal !important;
+  padding-left: 2rem !important;
+  margin: 1rem 0 !important;
+}
+.ProseMirror blockquote {
+  border-left: 4px solid #2f6f68 !important;
+  background-color: #fcfbf8 !important;
+  padding: 0.5rem 1rem !important;
+  margin: 1rem 0 !important;
+  font-style: italic !important;
+  color: #454b48 !important;
+  border-radius: 0 6px 6px 0;
+}
+
+.ProseMirror h1 {
+  font-size: 2rem !important;
+  font-weight: bold !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5rem !important;
+  font-weight: bold !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: 0.5rem !important;
+}

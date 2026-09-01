@@ -1,18 +1,37 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Bell,
   Command,
+  LogOut,
   Menu,
   Plus,
   Search,
+  User,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface NavbarProps {
   onMenuClick?: () => void;
 }
 
 export default function Navbar({ onMenuClick }: NavbarProps) {
+  const { user, initials, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <header
       className="
@@ -98,20 +117,63 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
         </button>
 
-        {/* Avatar */}
-        <button
-          type="button"
-          className="
-            flex h-9 w-9 items-center justify-center
-            rounded-full bg-[#dedbd2]
-            text-[10px] font-semibold text-[#57534e]
-            ring-2 ring-transparent
-            transition hover:ring-[var(--border-strong)]
-          "
-          aria-label="User menu"
-        >
-          SA
-        </button>
+        {/* Avatar + dropdown */}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            className="
+              flex h-9 w-9 items-center justify-center
+              rounded-full bg-[#dedbd2]
+              text-[10px] font-semibold text-[#57534e]
+              ring-2 ring-transparent
+              transition hover:ring-[var(--border-strong)]
+            "
+            aria-label="User menu"
+          >
+            {initials}
+          </button>
+
+          {menuOpen && (
+            <div
+              className="
+                absolute right-0 top-11 z-50 w-56
+                overflow-hidden rounded-xl
+                border border-[var(--border)]
+                bg-[var(--surface)]
+                shadow-[var(--shadow-md)]
+              "
+            >
+              <div className="border-b border-[var(--border)] px-4 py-3">
+                <p className="truncate text-xs font-semibold text-[var(--foreground)]">
+                  {user?.full_name ?? "Loading..."}
+                </p>
+                <p className="truncate text-[10px] text-[var(--muted)]">{user?.email}</p>
+              </div>
+
+              <Link
+                href="/profile"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 px-4 py-2.5 text-xs text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
+              >
+                <User className="h-3.5 w-3.5 text-[var(--muted)]" />
+                Profile
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  logout();
+                }}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs text-red-600 transition hover:bg-red-50"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
