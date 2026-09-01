@@ -14,8 +14,11 @@ class TeamUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
 
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional
+
 class TeamMemberAdd(BaseModel):
-    user_id: UUID
+    email: EmailStr  
     role: str = Field(default="member", max_length=50)
 
 class TeamMemberResponse(BaseModel):

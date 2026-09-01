@@ -23,6 +23,12 @@ interface TeamItem {
   team_members?: TeamMember[];
 }
 
+interface WorkspaceUser {
+  id: string;
+  email: string;
+  name?: string;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 export default function TeamsPage() {
@@ -35,7 +41,10 @@ export default function TeamsPage() {
   const [editingDesc, setEditingDesc] = useState('');
 
   const [managingTeamId, setManagingTeamId] = useState<string | null>(null);
-  const [newMemberUserId, setNewMemberUserId] = useState('');
+  const [workspaceUsers, setWorkspaceUsers] = useState<WorkspaceUser[]>([]);
+  
+  // State for member addition via email
+  const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('member');
 
   const [error, setError] = useState('');
@@ -53,7 +62,6 @@ export default function TeamsPage() {
         return;
       }
 
-      // Set global authorization header for axios requests
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       try {
@@ -88,17 +96,41 @@ export default function TeamsPage() {
       }
     } catch (err: any) {
       console.warn('Fetch teams error:', err);
-      setError(err.response?.data?.detail || 'Failed to load teams from server.');
+      const errMsg = err.response?.data?.detail;
+      setError(typeof errMsg === 'string' ? errMsg : 'Failed to load teams from server.');
+    }
+  };
+
+  // 3. Fetch Workspace Users for dropdown selection
+  const fetchWorkspaceUsers = async () => {
+    if (!workspaceId) return;
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/workspaces/${workspaceId}/users`);
+      const usersData = response.data.data || response.data || [];
+      if (Array.isArray(usersData)) {
+        setWorkspaceUsers(usersData);
+      }
+    } catch (err) {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/users`);
+        const usersData = response.data.data || response.data || [];
+        if (Array.isArray(usersData)) {
+          setWorkspaceUsers(usersData);
+        }
+      } catch (innerErr) {
+        console.warn('Workspace users endpoint not found, manual email input required:', innerErr);
+      }
     }
   };
 
   useEffect(() => {
     if (workspaceId) {
       fetchTeams();
+      fetchWorkspaceUsers();
     }
   }, [workspaceId]);
 
-  // 3. Handle creation of a new team
+  // 4. Handle creation of a new team
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeamName.trim() || !workspaceId) return;
@@ -121,11 +153,12 @@ export default function TeamsPage() {
       }
     } catch (err: any) {
       console.error('Create team error:', err.response?.data || err.message);
-      setError(err.response?.data?.detail || 'Failed to create team.');
+      const errMsg = err.response?.data?.detail;
+      setError(typeof errMsg === 'string' ? errMsg : 'Failed to create team.');
     }
   };
 
-  // 4. Handle deletion of an existing team
+  // 5. Handle deletion of an existing team
   const handleDeleteTeam = async (teamId: string) => {
     if (!window.confirm('Are you sure you want to delete this team?')) return;
 
@@ -134,11 +167,12 @@ export default function TeamsPage() {
       setTeams((prev) => prev.filter((t) => t.id !== teamId));
     } catch (err: any) {
       console.error('Delete team error:', err);
-      alert(err.response?.data?.detail || 'Failed to delete team.');
+      const errMsg = err.response?.data?.detail;
+      alert(typeof errMsg === 'string' ? errMsg : 'Failed to delete team.');
     }
   };
 
-  // 5. Handle updating an existing team details
+  // 6. Handle updating an existing team details
   const handleUpdateTeam = async (teamId: string) => {
     if (!editingName.trim()) return;
 
@@ -153,36 +187,58 @@ export default function TeamsPage() {
       setEditingTeamId(null);
     } catch (err: any) {
       console.error('Update team error:', err);
-      alert(err.response?.data?.detail || 'Failed to update team.');
+      const errMsg = err.response?.data?.detail;
+      alert(typeof errMsg === 'string' ? errMsg : 'Failed to update team.');
     }
   };
 
-  // 6. Handle adding a member to a team
+  // 7. Handle adding a member using Email
   const handleAddMember = async (teamId: string) => {
-    if (!newMemberUserId.trim()) return;
-    const userIdInput = newMemberUserId.trim();
+    if (!newMemberEmail.trim()) {
+      alert('Please enter or select a valid user email.');
+      return;
+    }
+    const emailInput = newMemberEmail.trim();
 
     try {
-      await axios.post(`${API_BASE_URL}/api/teams/${teamId}/members`, {
-        user_id: userIdInput,
+      setError(''); // Clear previous error messages
+      const response = await axios.post(`${API_BASE_URL}/api/teams/${teamId}/members`, {
+        email: emailInput,
         role: newMemberRole,
       });
+
+      // Check if backend returned a logical duplicate / custom warning response
+      if (response.data && response.data.success === false) {
+        const message = response.data.message || 'This user is already a member of the team.';
+        setError(message);
+        setNewMemberEmail(''); // Clear the email box so user can type a new one or close
+        return; // Keep the managing section open so the error message is visible
+      } 
+      
+      // Successful addition flow
       await fetchTeams();
-      setNewMemberUserId('');
+      setNewMemberEmail('');
+      setManagingTeamId(null); // Close the box only on true success
     } catch (err: any) {
       console.error('Add member error:', err);
-      setError(err.response?.data?.detail || 'Failed to add team member.');
+      const errMsg = err.response?.data?.detail || err.response?.data?.message;
+      const finalErrorMsg = typeof errMsg === 'string' ? errMsg : 'This user is already a member of the team.';
+      
+      setError(finalErrorMsg); // Display error clearly in top banner
+      setNewMemberEmail(''); // Clear email input field for user convenience
+      // Do not close managingTeamId here so user can see the error banner clearly
     }
   };
-
-  // 7. Handle removing a member from a team
+    
+  // 8. Handle removing a member from a team
   const handleRemoveMember = async (teamId: string, userId: string) => {
     try {
       await axios.delete(`${API_BASE_URL}/api/teams/${teamId}/members/${userId}`);
       await fetchTeams();
     } catch (err: any) {
       console.error('Remove member error:', err);
-      alert(err.response?.data?.detail || 'Failed to remove team member.');
+      const errMsg = err.response?.data?.detail;
+      alert(typeof errMsg === 'string' ? errMsg : 'Failed to remove team member.');
     }
   };
 
@@ -233,7 +289,7 @@ export default function TeamsPage() {
             <p>No teams found in this workspace. Create one above.</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 items-start">
             {teams.map((team) => (
               <div key={team.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col justify-between">
                 <div>
@@ -302,7 +358,10 @@ export default function TeamsPage() {
                         Members ({team.team_members?.length || 0})
                       </span>
                       <button
-                        onClick={() => setManagingTeamId(managingTeamId === team.id ? null : team.id)}
+                        onClick={() => {
+                          setManagingTeamId(managingTeamId === team.id ? null : team.id);
+                          setError(''); // Clear error when toggling view
+                        }}
                         className="text-[11px] text-[var(--primary)] hover:underline font-medium cursor-pointer"
                       >
                         {managingTeamId === team.id ? 'Close' : '+ Add Member'}
@@ -310,26 +369,45 @@ export default function TeamsPage() {
                     </div>
 
                     {managingTeamId === team.id && (
-                      <div className="mb-3 p-2.5 bg-gray-50 border rounded-xl flex flex-col gap-2 text-xs">
-                        <input
-                          type="text"
-                          placeholder="User UUID..."
-                          value={newMemberUserId}
-                          onChange={(e) => setNewMemberUserId(e.target.value)}
-                          className="w-full px-2 py-1 bg-white border rounded-lg text-xs"
-                        />
-                        <div className="flex gap-2">
+                      <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-xl flex flex-col gap-2.5 text-xs">
+                        {workspaceUsers.length > 0 ? (
+                          <select
+                            value={newMemberEmail}
+                            onChange={(e) => setNewMemberEmail(e.target.value)}
+                            className="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-lg text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                          >
+                            <option value="">Select a user email...</option>
+                            {workspaceUsers.map((u) => (
+                              <option key={u.id} value={u.email}>
+                                {u.email} {u.name ? `(${u.name})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div>
+                            <input
+                              type="email"
+                              placeholder="Enter user email (e.g. user@example.com)"
+                              value={newMemberEmail}
+                              onChange={(e) => setNewMemberEmail(e.target.value)}
+                              className="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                            />
+                            <p className="text-[10px] text-gray-500 mt-1">Note: Enter the registered email of the user.</p>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 items-center">
                           <select
                             value={newMemberRole}
                             onChange={(e) => setNewMemberRole(e.target.value)}
-                            className="w-full px-2 py-1 bg-white border rounded-lg text-xs cursor-pointer"
+                            className="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-lg text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
                           >
                             <option value="member">Member</option>
                             <option value="admin">Admin</option>
                           </select>
                           <button
                             onClick={() => handleAddMember(team.id)}
-                            className="px-3 py-1 bg-[var(--primary)] text-white rounded-lg whitespace-nowrap cursor-pointer"
+                            className="px-4 py-2 bg-[var(--primary)] text-white font-medium rounded-lg whitespace-nowrap hover:opacity-90 transition cursor-pointer"
                           >
                             Add
                           </button>

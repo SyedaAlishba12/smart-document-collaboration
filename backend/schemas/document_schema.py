@@ -15,10 +15,13 @@ class DocumentUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
     content: Optional[str] = None
     folder_id: Optional[UUID] = None
+    is_favorite: Optional[bool] = None
+    is_archived: Optional[bool] = None
 
 class DocumentAutosave(BaseModel):
-    content: str
-
+    title: Optional[str] = None
+    content: Optional[str] = None
+    
 class DocumentMove(BaseModel):
     folder_id: Optional[UUID] = None
 
