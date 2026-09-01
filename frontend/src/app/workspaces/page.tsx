@@ -38,13 +38,25 @@ export default function WorkspacesPage() {
               <Spinner size="lg" />
             </div>
           ) : workspaces.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">
-              No workspaces yet. Create your first one to get started.
-            </p>
+            <div className="fade-slide-up rounded-[var(--radius-lg)] border border-dashed border-[var(--border-strong)] bg-[var(--surface-muted)] px-6 py-16 text-center">
+              <p className="text-sm font-medium text-[var(--foreground)]">No workspaces yet</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Create your first one to bring your team's documents together.
+              </p>
+              <div className="mt-5 flex justify-center">
+                <Button onClick={() => setShowModal(true)}>New workspace</Button>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {workspaces.map((w) => (
-                <WorkspaceCard key={w.id} workspace={w} />
+              {workspaces.map((w, i) => (
+                <div
+                  key={w.id}
+                  className="card-stagger"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  <WorkspaceCard workspace={w} />
+                </div>
               ))}
             </div>
           )}
