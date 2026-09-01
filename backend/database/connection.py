@@ -16,4 +16,10 @@ engine = create_async_engine(
         "ssl": True
     },
     echo=True,
+    # Neon (serverless Postgres) closes idle connections after a short
+    # period. Without these, SQLAlchemy tries to reuse a dead connection
+    # and crashes with "connection is closed" whenever the app has sat
+    # idle for a few minutes (e.g. between testing sessions).
+    pool_pre_ping=True,   # check the connection is alive before using it
+    pool_recycle=280,     # proactively recycle connections before Neon's own timeout
 )

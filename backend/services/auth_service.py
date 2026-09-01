@@ -34,7 +34,10 @@ async def signup_user(db: AsyncSession, data: SignupRequest) -> User:
     await db.refresh(user)
 
     verify_token = create_verify_token(user.id)
-    send_verification_email(user.email, user.full_name, verify_token)
+    try:
+        send_verification_email(user.email, user.full_name, verify_token)
+    except Exception as e:
+        print(f"[EMAIL SEND FAILED] verification to {user.email}: {e}")
 
     return user
 
@@ -78,7 +81,15 @@ async def request_password_reset(db: AsyncSession, email: str) -> None:
         return
 
     reset_token = create_reset_token(user.id)
-    send_password_reset_email(user.email, user.full_name, reset_token)
+    try:
+        send_password_reset_email(user.email, user.full_name, reset_token)
+    except Exception as e:
+        # Don't let an email-provider failure (e.g. Resend's unverified-domain
+        # recipient restriction) crash the whole request. Log it so it's
+        # visible in the terminal, but still let the endpoint return
+        # successfully -- the user experience for "email didn't arrive"
+        # should be a quiet failure, not a 500.
+        print(f"[EMAIL SEND FAILED] password reset to {user.email}: {e}")
 
 
 async def reset_password(db: AsyncSession, token: str, new_password: str) -> None:

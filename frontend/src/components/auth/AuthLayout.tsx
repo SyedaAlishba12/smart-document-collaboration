@@ -42,7 +42,19 @@ export default function AuthLayout({ eyebrow, title, tagline, children }: AuthLa
       </div>
 
       {/* Right: form */}
-      <div className="flex items-center justify-center bg-[var(--background)] p-6">
+      <div className="flex flex-col items-center bg-[var(--background)] p-6 md:justify-center">
+        {/* Mobile-only logo/backlink, since the left panel (which holds
+            it) is completely hidden below the md breakpoint. */}
+        <Link
+          href="/"
+          className="mb-8 flex items-center gap-2 self-start text-sm font-semibold text-[var(--foreground)] transition hover:text-[var(--primary)] md:hidden"
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--primary)] text-[10px] font-bold text-white">
+            SD
+          </div>
+          StudioDocs
+        </Link>
+
         <div className="fade-slide-up w-full max-w-sm">
           <h1 className="mb-1 text-2xl font-semibold tracking-[-0.025em] text-[var(--foreground)]">
             {title}

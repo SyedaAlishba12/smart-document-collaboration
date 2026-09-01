@@ -1,45 +1,48 @@
 """
-Shared email-sending utility, built on Resend. Any module that needs to
-send an email (verification, password reset, invites, notifications,
-etc.) should import send_email from here rather than calling the
-Resend SDK directly, so we have one place to change providers later.
+Shared email-sending utility, built on Gmail SMTP (via an App Password)
+instead of Resend, since Resend's free tier only allows sending to the
+account owner's own email until a domain is verified -- not practical
+for a team project with no budget for a domain.
+
+Any module that needs to send an email (verification, password reset,
+invites, notifications, etc.) should import send_email from here rather
+than writing its own SMTP logic, so we have one place to change
+providers later.
 """
 import os
-import resend
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from dotenv import load_dotenv
 
-# Load .env here directly, rather than relying on main.py having already
-# called load_dotenv() by the time this module is imported. Import order
-# (routes -> controllers -> services -> this file) can run before
-# main.py's own load_dotenv() line executes, which left RESEND_API_KEY
-# reading as None even when it was correctly set in .env.
 load_dotenv()
 
-resend.api_key = os.getenv("RESEND_API_KEY")
-
-FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 
 def send_email(to: str, subject: str, html: str) -> None:
     """
-    Sends an email via Resend. Raises if RESEND_API_KEY isn't set, so
-    misconfiguration fails loudly in development rather than silently
-    dropping emails.
+    Sends an email via Gmail SMTP. Raises if GMAIL_USER/GMAIL_APP_PASSWORD
+    aren't set, so misconfiguration fails loudly in development rather
+    than silently dropping emails.
     """
-    if not resend.api_key:
+    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
         raise RuntimeError(
-            "RESEND_API_KEY is not set. Add it to your .env to send real emails."
+            "GMAIL_USER / GMAIL_APP_PASSWORD are not set. Add them to your .env to send real emails."
         )
 
-    resend.Emails.send(
-        {
-            "from": FROM_EMAIL,
-            "to": [to],
-            "subject": subject,
-            "html": html,
-        }
-    )
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = GMAIL_USER
+    msg["To"] = to
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+        server.sendmail(GMAIL_USER, [to], msg.as_string())
 
 
 def send_verification_email(to: str, full_name: str, token: str) -> None:

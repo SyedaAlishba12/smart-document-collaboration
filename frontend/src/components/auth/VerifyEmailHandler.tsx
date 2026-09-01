@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import api from "@/lib/api_client";
 import Alert from "@/components/ui/Alert";
 import Spinner from "@/components/ui/Spinner";
+import Button from "@/components/ui/Button";
 
 export default function VerifyEmailHandler() {
   const searchParams = useSearchParams();
@@ -31,14 +33,26 @@ export default function VerifyEmailHandler() {
         </div>
       )}
       {status === "success" && (
-        <Alert
-          variant="success"
-          title="Email verified"
-          message="You can now log in to your account."
-        />
+        <div className="flex flex-col gap-4">
+          <Alert
+            variant="success"
+            title="Email verified"
+            message="You can now log in to your account."
+          />
+          <Link href="/login">
+            <Button className="w-full">Log in</Button>
+          </Link>
+        </div>
       )}
       {status === "error" && (
-        <Alert variant="error" title="Verification failed" message="This link is invalid or expired." />
+        <div className="flex flex-col gap-4">
+          <Alert variant="error" title="Verification failed" message="This link is invalid or expired." />
+          <Link href="/login">
+            <Button variant="secondary" className="w-full">
+              Back to log in
+            </Button>
+          </Link>
+        </div>
       )}
     </div>
   );
