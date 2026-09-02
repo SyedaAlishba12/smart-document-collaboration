@@ -1,330 +1,405 @@
 @import "tailwindcss";
 
 :root {
-  /* =========================================================
-     Smart Document Collaboration — Design System
-     Warm Editorial / Workspace Theme
-     ========================================================= */
+/* =========================================================
+Smart Document Collaboration — Design System
+Warm Editorial / Workspace Theme
+========================================================= */
 
-  /* Backgrounds */
-  --background: #f5f3ee;
-  --surface: #fcfbf8;
-  --surface-muted: #eeece6;
-  --surface-hover: #e8e6df;
+/* Backgrounds */
+--background: #f5f3ee;
+--surface: #fcfbf8;
+--surface-muted: #eeece6;
+--surface-hover: #e8e6df;
 
-  /* Sidebar / Dark surfaces */
-  --sidebar: #17211f;
-  --sidebar-hover: #202c29;
-  --sidebar-active: #263632;
+/* Sidebar / Dark surfaces */
+--sidebar: #17211f;
+--sidebar-hover: #202c29;
+--sidebar-active: #263632;
 
-  /* Borders */
-  --border: #ddd9d0;
-  --border-light: #e8e5de;
-  --border-strong: #c9c4b9;
+/* Borders */
+--border: #ddd9d0;
+--border-light: #e8e5de;
+--border-strong: #c9c4b9;
 
-  /* Primary */
-  --primary: #2f6f68;
-  --primary-hover: #255b55;
-  --primary-soft: #e1eeeb;
+/* Primary */
+--primary: #2f6f68;
+--primary-hover: #255b55;
+--primary-soft: #e1eeeb;
 
-  /* Secondary accent */
-  --accent: #b87952;
-  --accent-soft: #f1e3d9;
+/* Secondary accent */
+--accent: #b87952;
+--accent-soft: #f1e3d9;
 
-  /* Text */
-  --foreground: #202522;
-  --foreground-secondary: #454b48;
-  --muted: #747a75;
-  --muted-light: #9a9e99;
+/* Text */
+--foreground: #202522;
+--foreground-secondary: #454b48;
+--muted: #747a75;
+--muted-light: #9a9e99;
 
-  /* Status */
-  --success: #39745a;
-  --success-soft: #e2eee7;
+/* Status */
+--success: #39745a;
+--success-soft: #e2eee7;
+--warning: #a8732f;
+--warning-soft: #f3ead9;
+--danger: #a84c46;
+--danger-soft: #f3e2df;
+--info: #4d6f82;
+--info-soft: #e2ebef;
 
-  --warning: #a8732f;
-  --warning-soft: #f3ead9;
+/* Shadows */
+--shadow-sm: 0 1px 2px rgba(32, 37, 34, 0.04);
+--shadow-md: 0 5px 18px rgba(32, 37, 34, 0.07);
+--shadow-lg: 0 12px 35px rgba(32, 37, 34, 0.10);
 
-  --danger: #a84c46;
-  --danger-soft: #f3e2df;
-
-  --info: #4d6f82;
-  --info-soft: #e2ebef;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(32, 37, 34, 0.04);
-  --shadow-md: 0 5px 18px rgba(32, 37, 34, 0.07);
-  --shadow-lg: 0 12px 35px rgba(32, 37, 34, 0.10);
-
-  /* Radius */
-  --radius-sm: 7px;
-  --radius-md: 9px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
-  --radius-2xl: 22px;
+/* Radius */
+--radius-sm: 7px;
+--radius-md: 9px;
+--radius-lg: 14px;
+--radius-xl: 18px;
+--radius-2xl: 22px;
 }
 
 * {
   box-sizing: border-box;
-}
+  }
 
 html {
-  scroll-behavior: smooth;
+scroll-behavior: smooth;
 }
 
 body {
-  margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
+margin: 0;
+background: var(--background);
+color: var(--foreground);
+font-family: Arial, Helvetica, sans-serif;
+-webkit-font-smoothing: antialiased;
 }
 
 button,
 input,
 textarea,
 select {
-  font: inherit;
+font: inherit;
 }
 
 button {
-  cursor: pointer;
+cursor: pointer;
 }
 
 button:disabled {
-  cursor: not-allowed;
+cursor: not-allowed;
 }
 
 /* =========================================================
-   Scrollbar
-   ========================================================= */
+Scrollbar
+========================================================= */
 
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+width: 7px;
+height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c9c6bd;
-  border-radius: 999px;
+background: #c9c6bd;
+border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #aaa69c;
+background: #aaa69c;
 }
 
 /* =========================================================
-   Selection
-   ========================================================= */
+Selection
+========================================================= */
 
 ::selection {
-  background: var(--primary-soft);
-  color: var(--foreground);
+background: var(--primary-soft);
+color: var(--foreground);
 }
 
-
 /* =========================================================
-   Auth: floating document stack animation
-   (used by DocumentStackVisual.tsx)
-   ========================================================= */
+Auth: floating document stack animation
+(used by DocumentStackVisual.tsx)
+========================================================= */
 
 @keyframes docFloat {
-  0%, 100% {
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z))
-      rotateY(-6deg) rotateX(2deg) translateY(0px);
-  }
-  50% {
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z))
-      rotateY(6deg) rotateX(-2deg) translateY(-6px);
-  }
+0%,
+100% {
+transform: translate(var(--doc-x), var(--doc-y))
+translateZ(var(--doc-z))
+rotateY(-6deg)
+rotateX(2deg)
+translateY(0px);
+}
+
+50% {
+transform: translate(var(--doc-x), var(--doc-y))
+translateZ(var(--doc-z))
+rotateY(6deg)
+rotateX(-2deg)
+translateY(-6px);
+}
 }
 
 .doc-float {
-  animation: docFloat 7s ease-in-out infinite;
+animation: docFloat 7s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .doc-float {
-    animation: none;
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z));
-  }
-}
-
-/* =========================================================
-   Ambient background motion (hero glow, auth panel accents)
-   ========================================================= */
-
-@keyframes ambientDrift {
-  0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.3; }
-  50% { transform: translate(-50%, -20px) scale(1.15); opacity: 0.45; }
-}
-
-.ambient-glow {
-  animation: ambientDrift 10s ease-in-out infinite;
-}
-
-@keyframes fadeSlideUp {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-.fade-slide-up {
-  animation: fadeSlideUp 0.5s ease-out both;
-}
-
-@keyframes cardStagger {
-  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.card-stagger {
-  animation: cardStagger 0.4s ease-out both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ambient-glow,
-  .fade-slide-up,
-  .card-stagger {
-    animation: none;
-  }
-}
-
-
-/* =========================================================
-   Auth: floating document stack animation
-   (used by DocumentStackVisual.tsx)
-   ========================================================= */
-
-@keyframes docFloat {
-  0%, 100% {
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z))
-      rotateY(-6deg) rotateX(2deg) translateY(0px);
-  }
-  50% {
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z))
-      rotateY(6deg) rotateX(-2deg) translateY(-6px);
-  }
-}
-
 .doc-float {
-  animation: docFloat 7s ease-in-out infinite;
+animation: none;
+transform: translate(var(--doc-x), var(--doc-y))
+translateZ(var(--doc-z));
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .doc-float {
-    animation: none;
-    transform: translate(var(--doc-x), var(--doc-y)) translateZ(var(--doc-z));
-  }
 }
 
 /* =========================================================
-   Ambient background motion (hero glow, auth panel accents)
-   ========================================================= */
+Ambient background motion (hero glow, auth panel accents)
+========================================================= */
 
 @keyframes ambientDrift {
-  0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.3; }
-  50% { transform: translate(-50%, -20px) scale(1.15); opacity: 0.45; }
+0%,
+100% {
+transform: translate(-50%, 0) scale(1);
+opacity: 0.3;
+}
+
+50% {
+transform: translate(-50%, -20px) scale(1.15);
+opacity: 0.45;
+}
 }
 
 .ambient-glow {
-  animation: ambientDrift 10s ease-in-out infinite;
+animation: ambientDrift 10s ease-in-out infinite;
 }
 
 @keyframes fadeSlideUp {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
+0% {
+opacity: 0;
+transform: translateY(16px);
+}
+
+100% {
+opacity: 1;
+transform: translateY(0);
+}
 }
 
 .fade-slide-up {
-  animation: fadeSlideUp 0.5s ease-out both;
+animation: fadeSlideUp 0.5s ease-out both;
 }
 
 @keyframes cardStagger {
-  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+0% {
+opacity: 0;
+transform: translateY(10px) scale(0.98);
+}
+
+100% {
+opacity: 1;
+transform: translateY(0) scale(1);
+}
 }
 
 .card-stagger {
-  animation: cardStagger 0.4s ease-out both;
+animation: cardStagger 0.4s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient-glow,
-  .fade-slide-up,
-  .card-stagger {
-    animation: none;
-  }
+.ambient-glow,
+.fade-slide-up,
+.card-stagger {
+animation: none;
+}
 }
 
 /* =========================================================
-   Liquid morphing background (pure CSS, no WebGL/deps)
-   Organic blobs that slowly change shape + drift, with a
-   subtle mouse-parallax pull via CSS custom properties.
-   ========================================================= */
+Liquid morphing background (pure CSS, no WebGL/deps)
+Organic blobs that slowly change shape + drift, with a
+subtle mouse-parallax pull via CSS custom properties.
+========================================================= */
 
 @keyframes liquidMorph1 {
-  0%   { border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%; transform: translate(calc(var(--mx, 0px) * 0.02), calc(var(--my, 0px) * 0.02)) rotate(0deg) scale(1); }
-  33%  { border-radius: 60% 40% 30% 70% / 55% 65% 35% 45%; transform: translate(calc(var(--mx, 0px) * 0.02 + 20px), calc(var(--my, 0px) * 0.02 - 15px)) rotate(6deg) scale(1.08); }
-  66%  { border-radius: 35% 65% 55% 45% / 40% 30% 70% 60%; transform: translate(calc(var(--mx, 0px) * 0.02 - 15px), calc(var(--my, 0px) * 0.02 + 20px)) rotate(-4deg) scale(0.95); }
-  100% { border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%; transform: translate(calc(var(--mx, 0px) * 0.02), calc(var(--my, 0px) * 0.02)) rotate(0deg) scale(1); }
+0% {
+border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%;
+transform: translate(
+calc(var(--mx, 0px) * 0.02),
+calc(var(--my, 0px) * 0.02)
+)
+rotate(0deg)
+scale(1);
+}
+
+33% {
+border-radius: 60% 40% 30% 70% / 55% 65% 35% 45%;
+transform: translate(
+calc(var(--mx, 0px) * 0.02 + 20px),
+calc(var(--my, 0px) * 0.02 - 15px)
+)
+rotate(6deg)
+scale(1.08);
+}
+
+66% {
+border-radius: 35% 65% 55% 45% / 40% 30% 70% 60%;
+transform: translate(
+calc(var(--mx, 0px) * 0.02 - 15px),
+calc(var(--my, 0px) * 0.02 + 20px)
+)
+rotate(-4deg)
+scale(0.95);
+}
+
+100% {
+border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%;
+transform: translate(
+calc(var(--mx, 0px) * 0.02),
+calc(var(--my, 0px) * 0.02)
+)
+rotate(0deg)
+scale(1);
+}
 }
 
 @keyframes liquidMorph2 {
-  0%   { border-radius: 55% 45% 35% 65% / 50% 60% 40% 50%; transform: translate(calc(var(--mx, 0px) * -0.015), calc(var(--my, 0px) * -0.015)) rotate(0deg) scale(1); }
-  50%  { border-radius: 40% 60% 60% 40% / 65% 35% 65% 35%; transform: translate(calc(var(--mx, 0px) * -0.015 - 25px), calc(var(--my, 0px) * -0.015 + 15px)) rotate(-8deg) scale(1.1); }
-  100% { border-radius: 55% 45% 35% 65% / 50% 60% 40% 50%; transform: translate(calc(var(--mx, 0px) * -0.015), calc(var(--my, 0px) * -0.015)) rotate(0deg) scale(1); }
+0% {
+border-radius: 55% 45% 35% 65% / 50% 60% 40% 50%;
+transform: translate(
+calc(var(--mx, 0px) * -0.015),
+calc(var(--my, 0px) * -0.015)
+)
+rotate(0deg)
+scale(1);
+}
+
+50% {
+border-radius: 40% 60% 60% 40% / 65% 35% 65% 35%;
+transform: translate(
+calc(var(--mx, 0px) * -0.015 - 25px),
+calc(var(--my, 0px) * -0.015 + 15px)
+)
+rotate(-8deg)
+scale(1.1);
+}
+
+100% {
+border-radius: 55% 45% 35% 65% / 50% 60% 40% 50%;
+transform: translate(
+calc(var(--mx, 0px) * -0.015),
+calc(var(--my, 0px) * -0.015)
+)
+rotate(0deg)
+scale(1);
+}
 }
 
 .liquid-blob-container {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
+position: absolute;
+inset: 0;
+overflow: hidden;
+pointer-events: none;
+z-index: 0;
 }
 
 .liquid-blob {
-  position: absolute;
-  filter: blur(60px);
-  will-change: transform, border-radius;
-  opacity: 0.5;
+position: absolute;
+filter: blur(60px);
+will-change: transform, border-radius;
+opacity: 0.5;
 }
 
 .liquid-blob--one {
-  top: -10%;
-  left: 5%;
-  width: 480px;
-  height: 480px;
-  background: radial-gradient(circle at 30% 30%, var(--primary), transparent 70%);
-  animation: liquidMorph1 14s ease-in-out infinite;
+top: -10%;
+left: 5%;
+width: 480px;
+height: 480px;
+background: radial-gradient(
+circle at 30% 30%,
+var(--primary),
+transparent 70%
+);
+animation: liquidMorph1 14s ease-in-out infinite;
 }
 
 .liquid-blob--two {
-  bottom: -15%;
-  right: 0%;
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle at 60% 40%, var(--accent), transparent 70%);
-  animation: liquidMorph2 18s ease-in-out infinite;
-  animation-delay: -6s;
+bottom: -15%;
+right: 0%;
+width: 420px;
+height: 420px;
+background: radial-gradient(
+circle at 60% 40%,
+var(--accent),
+transparent 70%
+);
+animation: liquidMorph2 18s ease-in-out infinite;
+animation-delay: -6s;
 }
 
 .liquid-blob--three {
-  top: 30%;
-  right: 20%;
-  width: 320px;
-  height: 320px;
-  background: radial-gradient(circle at 50% 50%, var(--primary-soft), transparent 70%);
-  animation: liquidMorph1 20s ease-in-out infinite reverse;
-  animation-delay: -10s;
-  opacity: 0.35;
+top: 30%;
+right: 20%;
+width: 320px;
+height: 320px;
+background: radial-gradient(
+circle at 50% 50%,
+var(--primary-soft),
+transparent 70%
+);
+animation: liquidMorph1 20s ease-in-out infinite reverse;
+animation-delay: -10s;
+opacity: 0.35;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-blob {
-    animation: none;
-  }
+.liquid-blob {
+animation: none;
+}
+}
+
+/* =========================================================
+Tiptap / Document Editor Styles
+========================================================= */
+
+/* Force Tiptap List and Blockquote Styles */
+
+.ProseMirror ul {
+list-style-type: disc !important;
+padding-left: 2rem !important;
+margin: 1rem 0 !important;
+}
+
+.ProseMirror ol {
+list-style-type: decimal !important;
+padding-left: 2rem !important;
+margin: 1rem 0 !important;
+}
+
+.ProseMirror blockquote {
+border-left: 4px solid #2f6f68 !important;
+background-color: #fcfbf8 !important;
+padding: 0.5rem 1rem !important;
+margin: 1rem 0 !important;
+font-style: italic !important;
+color: #454b48 !important;
+border-radius: 0 6px 6px 0;
+}
+
+.ProseMirror h1 {
+font-size: 2rem !important;
+font-weight: bold !important;
+margin-top: 1.5rem !important;
+margin-bottom: 0.75rem !important;
+}
+
+.ProseMirror h2 {
+font-size: 1.5rem !important;
+font-weight: bold !important;
+margin-top: 1.25rem !important;
+margin-bottom: 0.5rem !important;
 }

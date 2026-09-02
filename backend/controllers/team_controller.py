@@ -6,7 +6,13 @@ from schemas.team_schema import TeamCreate, TeamUpdate, TeamMemberAdd
 class TeamController:
     @staticmethod
     async def create_team(db: AsyncSession, team_data: TeamCreate):
+        # Create team via service layer
         team = await TeamService.create_team(db, team_data)
+        
+        # Explicitly commit changes to persist in database
+        await db.commit()
+        await db.refresh(team)
+        
         return {
             "success": True,
             "message": "Team created successfully",
@@ -37,6 +43,11 @@ class TeamController:
                 "message": "Team not found",
                 "data": None
             }
+            
+        # Commit updates to database
+        await db.commit()
+        await db.refresh(team)
+        
         return {
             "success": True,
             "message": "Team updated successfully",
@@ -52,6 +63,10 @@ class TeamController:
                 "message": "Team not found",
                 "data": None
             }
+            
+        # Commit deletion to database
+        await db.commit()
+        
         return {
             "success": True,
             "message": "Team deleted successfully",
@@ -61,6 +76,16 @@ class TeamController:
     @staticmethod
     async def add_team_member(db: AsyncSession, team_id: UUID, member_data: TeamMemberAdd):
         member = await TeamService.add_team_member(db, team_id, member_data)
+        
+        # Check if service returned a validation error/duplicate message
+        if isinstance(member, dict) and member.get("success") is False:
+            return member
+            
+        # Commit new member addition to database
+        await db.commit()
+        if hasattr(member, "id"):
+            await db.refresh(member)
+            
         return {
             "success": True,
             "message": "Team member added successfully",
@@ -76,6 +101,10 @@ class TeamController:
                 "message": "Team member not found",
                 "data": None
             }
+            
+        # Commit removal to database
+        await db.commit()
+        
         return {
             "success": True,
             "message": "Team member removed successfully",

@@ -3,6 +3,7 @@
 import {
   Activity,
   Bell,
+  Files,
   FileText,
   Folder,
   HelpCircle,
@@ -12,6 +13,8 @@ import {
   Settings,
   Share2,
   Star,
+  User,
+  Users,
 } from "lucide-react";
 
 import Link from "next/link";
@@ -42,6 +45,16 @@ const workspaceNavigation = [
     label: "Workspaces",
     icon: LayoutGrid,
     href: "/workspaces",
+  },
+  {
+    label: "Teams",
+    icon: Users,
+    href: "/teams",
+  },
+  {
+    label: "Files",
+    icon: Files,
+    href: "/files",
   },
 ];
 

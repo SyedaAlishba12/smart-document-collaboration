@@ -1,9 +1,53 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from uuid import UUID
 from services.document_service import DocumentService
 from schemas.document_schema import DocumentCreate, DocumentUpdate, DocumentAutosave, DocumentMove, DocumentFavorite
+from models.document import Document # Ensure Document model is imported
 
 class DocumentController:
+    @staticmethod
+    async def get_documents_by_workspace(db: AsyncSession, workspace_id: UUID):
+        """
+        Retrieve all documents associated with a specific workspace ID.
+        """
+        try:
+            query = select(Document).where(Document.workspace_id == workspace_id)
+            result = await db.execute(query)
+            documents = result.scalars().all()
+            return {
+                "success": True,
+                "message": "Documents fetched successfully by workspace",
+                "data": documents
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": str(e),
+                "data": []
+            }
+
+    @staticmethod
+    async def get_all_documents(db: AsyncSession):
+        """
+        Retrieve all documents from the database.
+        """
+        try:
+            query = select(Document)
+            result = await db.execute(query)
+            documents = result.scalars().all()
+            return {
+                "success": True,
+                "message": "All documents fetched successfully",
+                "data": documents
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": str(e),
+                "data": []
+            }
+
     @staticmethod
     async def create_document(db: AsyncSession, owner_id: UUID, doc_data: DocumentCreate):
         try:

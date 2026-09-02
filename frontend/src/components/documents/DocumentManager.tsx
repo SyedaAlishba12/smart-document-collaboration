@@ -21,9 +21,10 @@ export default function DocumentManager() {
     fetchDocuments();
   }, []);
 
+  // Fetch documents from the server
   const fetchDocuments = async () => {
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/documents`);
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/documents`);
       setDocuments(res.data.data || res.data || []);
     } catch (err: any) {
       console.error('Error fetching documents:', err);
@@ -33,11 +34,14 @@ export default function DocumentManager() {
     }
   };
 
+  // Create a new document with workspace_id to prevent 400 Bad Request
   const createDocument = async () => {
     try {
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/documents`, {
+      const activeWorkspaceId = localStorage.getItem('workspace_id') || '';
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/documents`, {
         title: 'Untitled Document',
         content: '',
+        workspace_id: activeWorkspaceId,
       });
       const newDocId = res.data.data?.id || res.data.id;
       if (newDocId) {
@@ -45,7 +49,7 @@ export default function DocumentManager() {
       }
     } catch (err: any) {
       console.error('Error creating document:', err);
-      alert(`Could not create document. Server responded with: ${err.response?.statusText || '405 Method Not Allowed check backend route.'}`);
+      alert(`Could not create document. Server responded with: ${err.response?.statusText || 'Bad Request'}`);
     }
   };
 
@@ -65,7 +69,7 @@ export default function DocumentManager() {
           </div>
           <button
             onClick={createDocument}
-            className="px-5 py-2.5 text-sm font-medium text-white bg-black rounded-xl hover:bg-gray-800 transition shadow-md hover:shadow-lg flex items-center gap-2"
+            className="px-5 py-2.5 text-sm font-medium text-white bg-black rounded-xl hover:bg-gray-800 transition shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer"
           >
             <span className="text-lg leading-none">+</span> New Document
           </button>
@@ -96,7 +100,7 @@ export default function DocumentManager() {
             </div>
             <button
               onClick={createDocument}
-              className="px-4 py-2 text-xs font-medium text-black bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+              className="px-4 py-2 text-xs font-medium text-black bg-gray-100 hover:bg-gray-200 rounded-lg transition cursor-pointer"
             >
               Create Document Now
             </button>

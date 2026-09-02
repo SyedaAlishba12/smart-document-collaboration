@@ -10,19 +10,22 @@ from schemas.document_schema import DocumentCreate, DocumentUpdate, DocumentAuto
 class DocumentService:
     @staticmethod
     async def create_document(db: AsyncSession, owner_id: UUID, doc_data: DocumentCreate) -> Document:
-        # 1. Ensure a valid User exists in the database to satisfy the foreign key
+        """
+        Create a new document after ensuring a valid User and Workspace exist to satisfy foreign key constraints.
+        """
+        # 1. Ensure a valid User exists in the database to satisfy the foreign key constraint
         result_user = await db.execute(select(User).where(User.id == owner_id))
         user = result_user.scalars().first()
         
         if not user:
-            # Check if any user exists in the database
+            # Check if any user exists in the database as a fallback
             result_any_user = await db.execute(select(User))
             user = result_any_user.scalars().first()
             
             if user:
                 owner_id = user.id
             else:
-                # Create a default system user if none exists
+                # Create a default system user if no users exist at all
                 owner_id = uuid.uuid4()
                 default_user = User(
                     id=owner_id,
@@ -43,7 +46,7 @@ class DocumentService:
             workspace = result_ws.scalars().first()
             
         if not workspace:
-            # Fetch the first available workspace
+            # Fetch the first available workspace as a fallback
             result_any_ws = await db.execute(select(Workspace))
             workspace = result_any_ws.scalars().first()
             
@@ -78,11 +81,17 @@ class DocumentService:
 
     @staticmethod
     async def get_document_by_id(db: AsyncSession, document_id: UUID) -> Document | None:
+        """
+        Fetch a single document by its unique UUID.
+        """
         result = await db.execute(select(Document).where(Document.id == document_id))
         return result.scalars().first()
 
     @staticmethod
     async def update_document(db: AsyncSession, document_id: UUID, doc_data: DocumentUpdate) -> Document | None:
+        """
+        Update document attributes including title, content, folder, favorite status, and archive status.
+        """
         doc = await DocumentService.get_document_by_id(db, document_id)
         if not doc:
             return None
@@ -93,24 +102,41 @@ class DocumentService:
             doc.content = doc_data.content
         if doc_data.folder_id is not None:
             doc.folder_id = doc_data.folder_id
+        if doc_data.is_favorite is not None:
+            doc.is_favorite = doc_data.is_favorite
+        if doc_data.is_archived is not None:
+            doc.is_archived = doc_data.is_archived
 
         await db.commit()
         await db.refresh(doc)
         return doc
 
     @staticmethod
-    async def autosave_document(db: AsyncSession, document_id: UUID, autosave_data: DocumentAutosave) -> Document | None:
+    async def autosave_document(db: AsyncSession, document_id: UUID, autosave_data: DocumentAutosave) -> dict:
+        """
+        Automatically save document title and content updates during active editor sessions.
+        """
         doc = await DocumentService.get_document_by_id(db, document_id)
         if not doc:
-            return None
+            return {"success": False, "message": "Document not found"}
         
-        doc.content = autosave_data.content
+        # Update title if provided in the autosave payload
+        if autosave_data.title is not None:
+            doc.title = autosave_data.title
+            
+        # Update content if provided in the autosave payload
+        if autosave_data.content is not None:
+            doc.content = autosave_data.content
+            
         await db.commit()
         await db.refresh(doc)
-        return doc
+        return {"success": True, "data": doc}
 
     @staticmethod
     async def move_document(db: AsyncSession, document_id: UUID, move_data: DocumentMove) -> Document | None:
+        """
+        Move a document to a designated folder.
+        """
         doc = await DocumentService.get_document_by_id(db, document_id)
         if not doc:
             return None
@@ -122,6 +148,9 @@ class DocumentService:
 
     @staticmethod
     async def toggle_favorite(db: AsyncSession, document_id: UUID, fav_data: DocumentFavorite) -> Document | None:
+        """
+        Toggle the favorite state of a document.
+        """
         doc = await DocumentService.get_document_by_id(db, document_id)
         if not doc:
             return None
@@ -133,6 +162,9 @@ class DocumentService:
 
     @staticmethod
     async def delete_document(db: AsyncSession, document_id: UUID) -> bool:
+        """
+        Permanently remove a document from the database.
+        """
         doc = await DocumentService.get_document_by_id(db, document_id)
         if not doc:
             return False

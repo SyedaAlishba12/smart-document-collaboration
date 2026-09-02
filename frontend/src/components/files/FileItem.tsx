@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Info, Edit2, Download, Trash2 } from 'lucide-react';
 
 interface FileItemProps {
   id: string;
@@ -9,30 +10,95 @@ interface FileItemProps {
   type?: string;
   onDownload: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, newName: string) => void;
+  onViewMetadata: (id: string) => void;
 }
 
-export default function FileItem({ id, name, size = '0 MB', type = 'FILE', onDownload, onDelete }: FileItemProps) {
+export default function FileItem({ 
+  id, 
+  name, 
+  size = '0 MB', 
+  type = 'FILE', 
+  onDownload, 
+  onDelete, 
+  onRename, 
+  onViewMetadata 
+}: FileItemProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [newName, setNewName] = useState(name);
+
+  const handleSaveRename = () => {
+    if (newName.trim() && newName !== name) {
+      onRename(id, newName);
+    }
+    setIsEditing(false);
+  };
+
   return (
-    <div className="bg-white border border-gray-200/80 rounded-xl p-4 flex items-center justify-between shadow-sm hover:border-gray-300 transition">
-      <div className="flex items-center gap-3 truncate">
-        <span className="text-xl p-2 bg-gray-50 rounded-lg">📎</span>
-        <div className="truncate">
-          <h4 className="font-medium text-sm text-gray-800 truncate">{name}</h4>
-          <p className="text-xs text-gray-400 mt-0.5">{type.toUpperCase()} • {size}</p>
+    <div className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 flex items-center justify-between hover:border-[var(--primary)] hover:shadow-md transition">
+      <div className="flex items-center gap-3 truncate flex-1 mr-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)] group-hover:bg-black group-hover:text-white transition flex-shrink-0">
+          📎
+        </div>
+        <div className="truncate flex-1">
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="text-xs border border-gray-300 rounded-xl px-3 py-2 outline-none w-full max-w-xs focus:border-black"
+                autoFocus
+              />
+              <button 
+                onClick={handleSaveRename}
+                className="text-xs bg-black text-white px-3 py-2 rounded-xl cursor-pointer hover:bg-gray-800"
+              >
+                Save
+              </button>
+              <button 
+                onClick={() => setIsEditing(false)}
+                className="text-xs bg-gray-100 text-gray-700 px-3 py-2 rounded-xl cursor-pointer hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <h4 className="font-semibold text-sm text-[var(--foreground)] truncate">{name}</h4>
+          )}
+          <p className="text-xs text-[var(--muted)] mt-0.5">{type.toUpperCase()} • {size}</p>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+
+      {/* Clean Lucide Icons without Move */}
+      <div className="flex items-center gap-1 text-gray-400 flex-shrink-0">
+        <button
+          onClick={() => onViewMetadata(id)}
+          className="p-2 hover:text-black rounded-lg hover:bg-gray-100 transition cursor-pointer"
+          title="Info & Metadata"
+        >
+          <Info className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => setIsEditing(true)}
+          className="p-2 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition cursor-pointer"
+          title="Rename File"
+        >
+          <Edit2 className="h-4 w-4" />
+        </button>
         <button
           onClick={() => onDownload(id)}
-          className="text-xs text-gray-600 hover:text-black font-medium px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg transition cursor-pointer"
+          className="p-2 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition cursor-pointer"
+          title="Download File"
         >
-          Download
+          <Download className="h-4 w-4" />
         </button>
         <button
           onClick={() => onDelete(id)}
-          className="text-xs text-red-500 hover:text-red-700 font-medium px-3 py-1.5 bg-red-50 border border-red-100 rounded-lg transition cursor-pointer"
+          className="p-2 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
+          title="Delete File"
         >
-          Delete
+          <Trash2 className="h-4 w-4" />
         </button>
       </div>
     </div>
