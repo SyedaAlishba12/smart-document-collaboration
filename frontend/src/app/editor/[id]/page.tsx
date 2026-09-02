@@ -1,41 +1,28 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-
 import axios from "axios";
-
 import { useParams, useRouter } from "next/navigation";
-
 import { useEditor, EditorContent } from "@tiptap/react";
-
 import StarterKit from "@tiptap/starter-kit";
-
 import Underline from "@tiptap/extension-underline";
-
 import Link from "@tiptap/extension-link";
-
 import Image from "@tiptap/extension-image";
-
 import { Table } from "@tiptap/extension-table";
-
 import { TableRow } from "@tiptap/extension-table-row";
-
 import { TableCell } from "@tiptap/extension-table-cell";
-
 import { TableHeader } from "@tiptap/extension-table-header";
+import ShareDialog from "@/components/sharing/ShareDialog";
 
 export default function EditorPage() {
   const params = useParams();
-
   const router = useRouter();
-
   const docId = params.id;
 
   const [title, setTitle] = useState("");
-
   const [status, setStatus] = useState("Saved");
-
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const [attachedFiles, setAttachedFiles] = useState<
     { id: string; name: string; url: string }[]
@@ -49,7 +36,6 @@ export default function EditorPage() {
 
       Link.configure({
         openOnClick: true,
-
         HTMLAttributes: {
           class: "text-blue-600 underline cursor-pointer",
           target: "_blank",
@@ -66,7 +52,6 @@ export default function EditorPage() {
 
       Table.configure({
         resizable: true,
-
         HTMLAttributes: {
           class:
             "border-collapse table-auto w-full border border-gray-300 my-4",
@@ -110,7 +95,6 @@ export default function EditorPage() {
       const htmlContent = editor.getHTML();
 
       setStatus("Unsaved changes...");
-
       debouncedSave(htmlContent, title);
     },
   });
@@ -119,7 +103,6 @@ export default function EditorPage() {
   useEffect(() => {
     if (docId && editor) {
       const rawId = Array.isArray(docId) ? docId[0] : docId;
-
       const cleanDocId = rawId.replace(/\.[^/.]+$/, "");
 
       axios
@@ -141,9 +124,9 @@ export default function EditorPage() {
 
           setIsInitialized(true);
         })
-        .catch((err) =>
-          console.error("Error loading document:", err)
-        );
+        .catch((err) => {
+          console.error("Error loading document:", err);
+        });
     }
   }, [docId, editor]);
 
@@ -167,9 +150,7 @@ export default function EditorPage() {
           }/api/documents/${cleanDocId}/autosave`,
           {
             title: currentTitle || "Untitled Document",
-
             content: currentContent,
-
             workspace_id: workspaceId,
           }
         );
@@ -177,7 +158,6 @@ export default function EditorPage() {
         setStatus("Saved");
       } catch (error) {
         console.error("Save failed:", error);
-
         setStatus("Error saving");
       }
     },
@@ -192,13 +172,11 @@ export default function EditorPage() {
         event.key.toLowerCase() === "s"
       ) {
         event.preventDefault();
-
         event.stopPropagation();
 
         if (!editor || !isInitialized) return;
 
         setStatus("Saving...");
-
         saveToServer(editor.getHTML(), title);
       }
     };
@@ -264,19 +242,15 @@ export default function EditorPage() {
         }/api/documents/${cleanDocId}/autosave`,
         {
           title: title || "Untitled Document",
-
           content: editor.getHTML(),
-
           workspace_id: workspaceId,
         }
       );
 
       setStatus("Saved");
-
       router.push("/documents");
     } catch (error) {
       console.error("Save & exit failed:", error);
-
       setStatus("Error saving");
     }
   };
@@ -301,7 +275,6 @@ export default function EditorPage() {
     if (!file) return;
 
     const formData = new FormData();
-
     formData.append("file", file);
 
     const apiBase =
@@ -322,7 +295,6 @@ export default function EditorPage() {
       );
 
       const responseData = res.data.data || res.data;
-
       const fileId = responseData.id;
 
       let imageUrl = responseData.file_url;
@@ -369,7 +341,6 @@ export default function EditorPage() {
       setStatus("Saved");
     } catch (err) {
       console.error("Image upload failed:", err);
-
       setStatus("Error uploading image");
     }
   };
@@ -430,7 +401,6 @@ export default function EditorPage() {
     if (!file) return;
 
     const formData = new FormData();
-
     formData.append("file", file);
 
     const apiBase =
@@ -494,6 +464,14 @@ export default function EditorPage() {
 
   if (!editor) return null;
 
+  const rawDocId = Array.isArray(docId)
+    ? docId[0]
+    : docId;
+
+  const cleanDocId = rawDocId
+    ? rawDocId.replace(/\.[^/.]+$/, "")
+    : "";
+
   return (
     <div className="h-screen bg-[#FBFBFA] flex flex-col overflow-hidden text-[#1A1A1A]">
       {/* Header */}
@@ -511,17 +489,19 @@ export default function EditorPage() {
             {status}
           </span>
 
+          {/* Share */}
+          <button
+            type="button"
+            onClick={() => setIsShareModalOpen(true)}
+            className="bg-[#2f6f68] text-white text-xs font-medium px-4 py-2 rounded-lg hover:opacity-90 transition shadow-sm cursor-pointer"
+          >
+            Share
+          </button>
+
+          {/* Comments */}
           <button
             type="button"
             onClick={() => {
-              const rawId = Array.isArray(docId)
-                ? docId[0]
-                : docId;
-
-              const cleanDocId = rawId
-                ? rawId.replace(/\.[^/.]+$/, "")
-                : "";
-
               router.push(
                 `/documents/${cleanDocId}/comments`
               );
@@ -638,7 +618,11 @@ export default function EditorPage() {
         <button
           type="button"
           onClick={() =>
-            editor.chain().focus().toggleBulletList().run()
+            editor
+              .chain()
+              .focus()
+              .toggleBulletList()
+              .run()
           }
           className={`px-2.5 py-1 border rounded transition cursor-pointer ${
             editor.isActive("bulletList")
@@ -652,7 +636,11 @@ export default function EditorPage() {
         <button
           type="button"
           onClick={() =>
-            editor.chain().focus().toggleOrderedList().run()
+            editor
+              .chain()
+              .focus()
+              .toggleOrderedList()
+              .run()
           }
           className={`px-2.5 py-1 border rounded transition cursor-pointer ${
             editor.isActive("orderedList")
@@ -666,7 +654,11 @@ export default function EditorPage() {
         <button
           type="button"
           onClick={() =>
-            editor.chain().focus().toggleBlockquote().run()
+            editor
+              .chain()
+              .focus()
+              .toggleBlockquote()
+              .run()
           }
           className={`px-2.5 py-1 border rounded transition cursor-pointer ${
             editor.isActive("blockquote")
@@ -680,7 +672,11 @@ export default function EditorPage() {
         <button
           type="button"
           onClick={() =>
-            editor.chain().focus().toggleCodeBlock().run()
+            editor
+              .chain()
+              .focus()
+              .toggleCodeBlock()
+              .run()
           }
           className={`px-2.5 py-1 border rounded transition font-mono cursor-pointer ${
             editor.isActive("codeBlock")
@@ -751,7 +747,16 @@ export default function EditorPage() {
           <EditorContent editor={editor} />
         </div>
       </main>
+
+      {/* Share Dialog */}
+      {isShareModalOpen && (
+        <ShareDialog
+          documentId={cleanDocId}
+          documentName={title || "Untitled Document"}
+          open={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
-

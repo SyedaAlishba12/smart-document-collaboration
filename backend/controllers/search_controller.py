@@ -1,51 +1,32 @@
-﻿"""
-Search controller — sits between routes and the (future) search service.
+"""
+Search controller — sits between routes and search_service.
 
 Flow: route -> schema -> controller -> service -> model
 
-Search is fully blocked on Document/Folder/User tables.  All functions
-return a clear 501 stub response during development.
+All functions delegate to services/search_service.py.  The service handles:
+  - Permission-aware document filtering (JOIN against Permission table).
+  - Folder search (workspace-scoped; no fine-grained permission — open question).
+  - User search (intentionally broad — needed for share-dialog people-picker).
 
-TODO: once Document/Folder/User are merged, create
-  services/search_service.py  with:
-    - search_documents(db, params) -> list[Document]
-    - search_folders(db, params) -> list[Folder]
-    - search_users(db, params) -> list[User]
-  and wire this controller to those functions.
+PREVIOUS STUB NOTE: This controller previously returned empty 501 stubs while
+Document/Folder/User were absent from this branch.  It now calls the real
+service, which resolves those models via SQLAlchemy's class registry at
+runtime.  The models must be registered (either real imports or test stubs)
+before any request is processed.
 """
 
 import uuid
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas.search_schema import SearchQueryParams, SearchResultResponse
+from schemas.search_schema import SearchResultResponse
+import services.search_service as ssvc
 
 
 def _envelope(success: bool, message: str, data: Any = None) -> Dict:
     return {"success": success, "message": message, "data": data}
-
-
-def _stub_response(query: str, limit: int, offset: int) -> Dict:
-    """
-    Returns an empty SearchResultResponse envelope.
-    Used by all search endpoints until the search service is implemented.
-    """
-    data = SearchResultResponse(
-        query=query,
-        total=0,
-        limit=limit,
-        offset=offset,
-        items=[],
-    )
-    return _envelope(
-        success=False,
-        message=(
-            "Search is not yet implemented — pending Document/Folder/User model merge. "
-            "Returning empty result set."
-        ),
-        data=data,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -59,17 +40,47 @@ async def global_search(
     workspace_id: Optional[uuid.UUID] = None,
     file_type: Optional[str] = None,
     resource_kind: Optional[str] = None,
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     limit: int = 20,
     offset: int = 0,
 ) -> Dict:
     """
     Search across documents, folders, and users.
 
-    TODO: delegate to search_service.global_search() once implemented.
+    resource_kind may narrow results to a single type:
+      "document" -> only document results
+      "folder"   -> only folder results
+      "user"     -> only user results
+      None       -> all three combined (search_all)
     """
-    return _stub_response(query=query, limit=limit, offset=offset)
+    if resource_kind == "document":
+        result = await ssvc.search_documents(
+            db, current_user_id, query,
+            workspace_id=workspace_id, file_type=file_type,
+            date_from=date_from, date_to=date_to,
+            limit=limit, offset=offset,
+        )
+    elif resource_kind == "folder":
+        result = await ssvc.search_folders(
+            db, current_user_id, query,
+            workspace_id=workspace_id,
+            limit=limit, offset=offset,
+        )
+    elif resource_kind == "user":
+        result = await ssvc.search_users(
+            db, query,
+            limit=limit, offset=offset,
+        )
+    else:
+        result = await ssvc.search_all(
+            db, current_user_id, query,
+            workspace_id=workspace_id, file_type=file_type,
+            date_from=date_from, date_to=date_to,
+            limit=limit, offset=offset,
+        )
+
+    return _envelope(success=True, message="Search completed.", data=result)
 
 
 # ---------------------------------------------------------------------------
@@ -82,17 +93,24 @@ async def search_documents(
     query: str,
     workspace_id: Optional[uuid.UUID] = None,
     file_type: Optional[str] = None,
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     limit: int = 20,
     offset: int = 0,
 ) -> Dict:
     """
-    Search documents only.
+    Permission-aware document search.
 
-    TODO: delegate to search_service.search_documents() once implemented.
+    Only returns documents the current_user_id has an explicit Permission row
+    for — no permission row means the document is invisible to this user.
     """
-    return _stub_response(query=query, limit=limit, offset=offset)
+    result = await ssvc.search_documents(
+        db, current_user_id, query,
+        workspace_id=workspace_id, file_type=file_type,
+        date_from=date_from, date_to=date_to,
+        limit=limit, offset=offset,
+    )
+    return _envelope(success=True, message="Document search completed.", data=result)
 
 
 # ---------------------------------------------------------------------------
@@ -108,11 +126,18 @@ async def search_folders(
     offset: int = 0,
 ) -> Dict:
     """
-    Search folders only.
+    Folder name search, optionally workspace-scoped.
 
-    TODO: delegate to search_service.search_folders() once implemented.
+    NOTE: Folder has no fine-grained permission control (confirmed — no
+    Permission relationship on folder.py).  Results are scoped to workspace_id
+    if supplied; otherwise all workspaces are searched.  Flag open for team.
     """
-    return _stub_response(query=query, limit=limit, offset=offset)
+    result = await ssvc.search_folders(
+        db, current_user_id, query,
+        workspace_id=workspace_id,
+        limit=limit, offset=offset,
+    )
+    return _envelope(success=True, message="Folder search completed.", data=result)
 
 
 # ---------------------------------------------------------------------------
@@ -128,8 +153,14 @@ async def search_users(
     offset: int = 0,
 ) -> Dict:
     """
-    Search users only (useful for the share dialog people-picker).
+    Broad user search for the share-dialog people-picker.
 
-    TODO: delegate to search_service.search_users() once implemented.
+    Not permission-gated by design — callers need to find any registered user.
+    workspace_id is accepted for API consistency but not used here; see
+    search_service.search_users() for the reasoning.
     """
-    return _stub_response(query=query, limit=limit, offset=offset)
+    result = await ssvc.search_users(
+        db, query,
+        limit=limit, offset=offset,
+    )
+    return _envelope(success=True, message="User search completed.", data=result)
