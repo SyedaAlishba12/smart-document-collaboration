@@ -52,7 +52,7 @@ export default function AddMemberForm({
       setResults((prev) => prev.filter((u) => u.id !== userId));
       onAdded();
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? "Could not add member.");
+      setError(err?.response?.data?.message ?? err?.response?.data?.detail ?? "Could not add member.");
     } finally {
       setAdding(null);
     }
