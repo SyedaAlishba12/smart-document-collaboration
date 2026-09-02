@@ -12,6 +12,9 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import NotificationDropdown from "@/components/notifications/NotificationDropdown";
+
+import { useRouter } from "next/navigation";
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -21,6 +24,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const { user, initials, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -28,9 +32,21 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         setMenuOpen(false);
       }
     }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (((e.metaKey || e.ctrlKey) && e.key === "k") || (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA")) {
+        e.preventDefault();
+        router.push("/search");
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [router]);
 
   return (
     <header
@@ -59,8 +75,8 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       </button>
 
       {/* Search */}
-      <button
-        type="button"
+      <Link
+        href="/search"
         className="
           group flex h-10 w-full max-w-[380px]
           items-center gap-3
@@ -81,7 +97,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           <Command className="h-2.5 w-2.5" />
           K
         </span>
-      </button>
+      </Link>
 
       <div className="ml-auto flex items-center gap-2">
         {/* Create */}
@@ -101,21 +117,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         </button>
 
         {/* Notifications */}
-        <button
-          type="button"
-          className="
-            relative flex h-9 w-9
-            items-center justify-center
-            rounded-lg border border-[var(--border)]
-            bg-white/70 text-[#77746c]
-            transition hover:bg-white
-          "
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4" />
-
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
-        </button>
+        <NotificationDropdown />
 
         {/* Avatar + dropdown */}
         <div className="relative" ref={menuRef}>

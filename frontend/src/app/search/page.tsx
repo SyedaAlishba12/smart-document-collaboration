@@ -1,15 +1,15 @@
-﻿"use client";
+"use client";
 
 /**
  * /search — global search page.
  *
- * Uses mock data to demonstrate the full search UI layout.
- * TODO: replace MOCK_RESULTS and fetch logic with GET /api/search calls
- * once the backend search service is implemented (pending Document/Folder/
- * User model merge).
+ * Fetches live data from GET /api/search with:
+ *   - Debounced query input
+ *   - Workspace, file type, date, and resource kind filters
+ *   - Server-side pagination
  */
 
-import { useState, useDeferredValue, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import SearchInput from "@/components/shared/SearchInput";
 import SearchFiltersBar, {
   SearchFilters,
@@ -19,58 +19,9 @@ import SearchResultCard, {
 } from "@/components/search/SearchResultCard";
 import Pagination from "@/components/ui/Pagination";
 import Spinner from "@/components/ui/Spinner";
-import { SearchX } from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// Mock data — remove when wiring to API
-// ---------------------------------------------------------------------------
-
-const MOCK_RESULTS: SearchResult[] = [
-  {
-    id: "1",
-    kind: "document",
-    title: "Q3 Product Roadmap",
-    subtitle: "Product Team workspace",
-    fileType: "docx",
-    modifiedAt: "2 days ago",
-  },
-  {
-    id: "2",
-    kind: "document",
-    title: "Engineering Sprint Plan — Aug 2026",
-    subtitle: "Engineering workspace",
-    fileType: "md",
-    modifiedAt: "5 hours ago",
-  },
-  {
-    id: "3",
-    kind: "folder",
-    title: "Design Assets",
-    subtitle: "Design workspace",
-    modifiedAt: "1 week ago",
-  },
-  {
-    id: "4",
-    kind: "user",
-    title: "Sayeel Ahmed",
-    subtitle: "sayeel@studiodocs.io",
-  },
-  {
-    id: "5",
-    kind: "document",
-    title: "Brand Guidelines v2",
-    subtitle: "Design workspace",
-    fileType: "pdf",
-    modifiedAt: "3 days ago",
-  },
-  {
-    id: "6",
-    kind: "folder",
-    title: "Q3 Deliverables",
-    subtitle: "Product Team workspace",
-    modifiedAt: "Yesterday",
-  },
-];
+import { SearchX, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { globalSearch, SearchResultItem } from "@/lib/search_api";
 
 const EMPTY_FILTERS: SearchFilters = {
   resourceKind: "",
@@ -80,30 +31,86 @@ const EMPTY_FILTERS: SearchFilters = {
   dateTo: "",
 };
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
+
+// Map API result item to the shape SearchResultCard expects
+function toSearchResult(item: SearchResultItem): SearchResult {
+  return {
+    id: item.id,
+    kind: item.kind as "document" | "folder" | "user",
+    title: item.title,
+    subtitle: item.workspace_id ?? (item.kind === "user" ? "" : ""),
+    fileType: item.file_type ?? undefined,
+    modifiedAt: item.modified_at
+      ? new Date(item.modified_at).toLocaleDateString()
+      : undefined,
+  };
+}
 
 export default function SearchPage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  // In production this would trigger a debounced fetch to /api/search
-  const deferredQuery = useDeferredValue(query);
-  const isStale = query !== deferredQuery;
+  // Debounce timer ref
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Client-side mock filtering
-  const filtered = useMemo(() => {
-    const q = deferredQuery.toLowerCase();
-    return MOCK_RESULTS.filter((r) => {
-      if (q && !r.title.toLowerCase().includes(q)) return false;
-      if (filters.resourceKind && r.kind !== filters.resourceKind) return false;
-      if (filters.fileType && r.fileType !== filters.fileType) return false;
-      return true;
-    });
-  }, [deferredQuery, filters]);
+  // ---------------------------------------------------------------------------
+  // Fetch results from API
+  // ---------------------------------------------------------------------------
+  const fetchResults = useCallback(
+    async (q: string, f: SearchFilters, p: number) => {
+      if (!q.trim()) {
+        setResults([]);
+        setTotal(0);
+        setHasSearched(false);
+        return;
+      }
+      setLoading(true);
+      setHasSearched(true);
+      try {
+        const res = await globalSearch({
+          query: q,
+          workspace_id: f.workspaceId || undefined,
+          file_type: f.fileType || undefined,
+          resource_kind: (f.resourceKind as any) || undefined,
+          date_from: f.dateFrom || undefined,
+          date_to: f.dateTo || undefined,
+          limit: PAGE_SIZE,
+          offset: (p - 1) * PAGE_SIZE,
+        });
+        if (res.success && res.data) {
+          setResults(res.data.items.map(toSearchResult));
+          setTotal(res.data.total);
+        } else {
+          setResults([]);
+          setTotal(0);
+        }
+      } catch {
+        setResults([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageResults = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Debounced effect — fires 350ms after the query or filters change
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchResults(query, filters, page);
+    }, 350);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, filters, page, fetchResults]);
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
@@ -115,21 +122,26 @@ export default function SearchPage() {
     setPage(1);
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
     <main className="min-h-screen bg-[var(--background)] p-6">
       <div className="mx-auto max-w-3xl space-y-5">
         {/* Page heading */}
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">
-            Search
-          </h1>
-          <p className="mt-0.5 text-sm text-[var(--muted)]">
-            Find documents, folders, and people.{" "}
-            {/* TODO: remove disclaimer when API is live */}
-            <span className="italic opacity-60">
-              (Mock data — API pending model merge)
-            </span>
-          </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-white text-[var(--muted)] transition hover:bg-gray-50 hover:text-[var(--foreground)]"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">Search</h1>
+            <p className="mt-0.5 text-sm text-[var(--muted)]">
+              Find documents, folders, and people across your workspace.
+            </p>
+          </div>
         </div>
 
         {/* Search bar */}
@@ -148,14 +160,14 @@ export default function SearchPage() {
         />
 
         {/* Results */}
-        <div className="relative">
-          {isStale && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/50">
+        <div className="relative min-h-[200px]">
+          {loading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70">
               <Spinner />
             </div>
           )}
 
-          {deferredQuery === "" ? (
+          {!hasSearched && !loading ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--muted)]">
                 <SearchX className="h-7 w-7" />
@@ -164,13 +176,13 @@ export default function SearchPage() {
                 Type something to search...
               </p>
             </div>
-          ) : pageResults.length === 0 ? (
+          ) : results.length === 0 && !loading ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--muted)]">
                 <SearchX className="h-7 w-7" />
               </div>
               <p className="font-medium text-[var(--foreground)]">
-                No results for &ldquo;{deferredQuery}&rdquo;
+                No results for &ldquo;{query}&rdquo;
               </p>
               <p className="text-sm text-[var(--muted)]">
                 Try different keywords or adjust your filters.
@@ -178,24 +190,28 @@ export default function SearchPage() {
             </div>
           ) : (
             <div className="space-y-1.5">
-              <p className="text-xs text-[var(--muted)]">
-                {filtered.length} result{filtered.length !== 1 ? "s" : ""} for{" "}
-                <span className="font-medium text-[var(--foreground)]">
-                  &ldquo;{deferredQuery}&rdquo;
-                </span>
-              </p>
+              {!loading && (
+                <p className="text-xs text-[var(--muted)]">
+                  {total} result{total !== 1 ? "s" : ""} for{" "}
+                  <span className="font-medium text-[var(--foreground)]">
+                    &ldquo;{query}&rdquo;
+                  </span>
+                </p>
+              )}
 
               <div className="rounded-2xl border border-[var(--border)] bg-white py-1">
-                {pageResults.map((r) => (
+                {results.map((r) => (
                   <SearchResultCard key={r.id} result={r} />
                 ))}
               </div>
 
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-              />
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                />
+              )}
             </div>
           )}
         </div>

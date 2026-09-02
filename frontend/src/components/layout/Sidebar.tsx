@@ -144,8 +144,8 @@ export default function Sidebar({
 
       {!collapsed && (
         <div className="px-4 pt-5">
-          <button
-            type="button"
+          <Link
+            href="/search"
             className="
               flex w-full items-center gap-2.5
               rounded-xl
@@ -177,7 +177,7 @@ export default function Sidebar({
             >
               /
             </span>
-          </button>
+          </Link>
         </div>
       )}
 
@@ -208,6 +208,8 @@ export default function Sidebar({
         <SidebarItem
           icon={Bell}
           label="Notifications"
+          href="/notifications"
+          active={pathname === "/notifications"}
           collapsed={collapsed}
         />
 

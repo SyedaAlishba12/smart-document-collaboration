@@ -12,6 +12,9 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
+// 1. Import your ShareDialog component
+import ShareDialog from '@/components/sharing/ShareDialog';
+import { useAuth } from '@/context/AuthContext';
 
 export default function EditorPage() {
   const params = useParams();
@@ -22,6 +25,9 @@ export default function EditorPage() {
   const [status, setStatus] = useState('Saved');
   const [isInitialized, setIsInitialized] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<{ id: string; name: string; url: string }[]>([]);
+
+  // 2. Add state to control the sharing modal
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -63,6 +69,7 @@ export default function EditorPage() {
       }),
     ],
     content: '',
+    editable: true,
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -77,11 +84,27 @@ export default function EditorPage() {
     },
   });
 
+  const { user } = useAuth();
+  
   // Fetch document content on load and clean any accidental file extension from docId
   useEffect(() => {
     if (docId && editor) {
       const rawId = Array.isArray(docId) ? docId[0] : docId;
       const cleanDocId = rawId.replace(/\.[^/.]+$/, '');
+
+      // Check if user is only a viewer
+      if (user) {
+        import('@/lib/permissions_api').then(({ getPermissions }) => {
+          getPermissions(cleanDocId).then((res) => {
+            if (res.success && res.data) {
+              const myPerm = res.data.items.find((p) => p.user_id === user.id);
+              if (myPerm && myPerm.permission_level === 'viewer') {
+                editor.setEditable(false);
+              }
+            }
+          });
+        });
+      }
 
       axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/documents/${cleanDocId}`)
         .then((res) => {
@@ -92,7 +115,7 @@ export default function EditorPage() {
         })
         .catch((err) => console.error('Error loading document:', err));
     }
-  }, [docId, editor]);
+  }, [docId, editor, user]);
 
   // Save document content to server
   const saveToServer = useCallback(async (currentContent: string, currentTitle: string) => {
@@ -100,7 +123,7 @@ export default function EditorPage() {
       const rawId = Array.isArray(docId) ? docId[0] : docId;
       const cleanDocId = rawId ? rawId.replace(/\.[^/.]+$/, '') : '';
       const workspaceId = localStorage.getItem('workspace_id') || '';
-      
+
       await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/documents/${cleanDocId}/autosave`, {
         title: currentTitle || 'Untitled Document',
         content: currentContent,
@@ -171,11 +194,11 @@ export default function EditorPage() {
 
     try {
       setStatus('Uploading image...');
-  
+
       const res = await axios.post(`${apiBase}/api/files/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
+
       const responseData = res.data.data || res.data;
       const fileId = responseData.id;
       let imageUrl = responseData.file_url;
@@ -249,7 +272,7 @@ export default function EditorPage() {
       const res = await axios.post(`${apiBase}/api/files/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      
+
       const responseData = res.data.data || res.data;
       const fileId = responseData.id;
       const fileName = responseData.file_name || file.name;
@@ -264,7 +287,7 @@ export default function EditorPage() {
       };
 
       setAttachedFiles((prev) => [...prev, fileEntry]);
-      
+
       if (editor) {
         editor.chain().focus().insertContent(`<p>📎 <a href="${fileUrl}" target="_blank" rel="noopener noreferrer">${fileName}</a></p>`).run();
       }
@@ -274,7 +297,7 @@ export default function EditorPage() {
       setStatus('Error uploading file');
     }
   };
-  
+
   if (!editor) return null;
 
   return (
@@ -291,6 +314,18 @@ export default function EditorPage() {
           <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
             {status}
           </span>
+
+          {/* 3. Add the Share Button right here */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsShareModalOpen(true);
+            }}
+            className="bg-[#2f6f68] text-white text-xs font-medium px-4 py-2 rounded-lg hover:bg-[#255b55] transition shadow-sm cursor-pointer z-50 relative"
+          >
+            Share
+          </button>
+
           <button
             type="button"
             onClick={handleSaveAndExit}
@@ -368,7 +403,7 @@ export default function EditorPage() {
           Code Block
         </button>
         <span className="w-px h-4 bg-gray-300 mx-1"></span>
-        
+
         <button
           type="button"
           onClick={setLink}
@@ -401,6 +436,16 @@ export default function EditorPage() {
           <EditorContent editor={editor} />
         </div>
       </main>
+
+      {/* 4. Drop the ShareDialog component at the bottom of the layout */}
+      {isShareModalOpen && (
+        <ShareDialog
+          documentId={Array.isArray(docId) ? docId[0].replace(/\.[^/.]+$/, '') : (docId as string).replace(/\.[^/.]+$/, '')}
+          documentName={title || 'Untitled Document'}
+          open={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

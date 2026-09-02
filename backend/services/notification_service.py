@@ -207,3 +207,77 @@ async def delete_notification(
         )
     await db.delete(row)
     await db.flush()
+
+
+# ---------------------------------------------------------------------------
+# Convenience wrappers — called by permission_service after mutations
+# ---------------------------------------------------------------------------
+
+
+async def notify_share(
+    db: AsyncSession,
+    recipient_id: uuid.UUID,
+    document_id: uuid.UUID,
+    granter_name: str,
+    document_title: str,
+    level: str,
+) -> Notification:
+    """
+    Fire a 'share' notification when a document is shared with a user.
+
+    Args:
+        db:             Async DB session.
+        recipient_id:   UUID of the user receiving the share.
+        document_id:    UUID of the shared document.
+        granter_name:   Display name of the user who shared the document.
+        document_title: Title of the shared document.
+        level:          The permission level granted (e.g. "editor").
+
+    Returns:
+        The created Notification instance.
+    """
+    message = f'{granter_name} shared "{document_title}" with you as {level}.'
+    return await create_notification(
+        db=db,
+        user_id=recipient_id,
+        notification_type=NotificationType.share,
+        resource_type="document",
+        resource_id=document_id,
+        message=message,
+    )
+
+
+async def notify_permission_change(
+    db: AsyncSession,
+    recipient_id: uuid.UUID,
+    document_id: uuid.UUID,
+    document_title: str,
+    old_level: str,
+    new_level: str,
+) -> Notification:
+    """
+    Fire a 'permission_change' notification when a user's access level changes.
+
+    Args:
+        db:             Async DB session.
+        recipient_id:   UUID of the user whose permission was changed.
+        document_id:    UUID of the affected document.
+        document_title: Title of the document.
+        old_level:      Previous permission level string.
+        new_level:      New permission level string.
+
+    Returns:
+        The created Notification instance.
+    """
+    message = (
+        f'Your access to "{document_title}" was changed '
+        f"from {old_level} to {new_level}."
+    )
+    return await create_notification(
+        db=db,
+        user_id=recipient_id,
+        notification_type=NotificationType.permission_change,
+        resource_type="document",
+        resource_id=document_id,
+        message=message,
+    )
