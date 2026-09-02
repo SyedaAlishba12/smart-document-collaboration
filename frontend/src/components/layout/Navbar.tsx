@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import WorkspaceSwitcher from "@/components/layout/WorkspaceSwitcher";
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -84,6 +85,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       </button>
 
       <div className="ml-auto flex items-center gap-2">
+        <WorkspaceSwitcher />
         {/* Create */}
         <button
           type="button"
