@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 /**
  * SearchResultCard — one item in the search results list.
@@ -47,11 +47,21 @@ const KIND_LABEL: Record<SearchResult["kind"], string> = {
   user: "Person",
 };
 
+import Link from "next/link";
+
 export default function SearchResultCard({ result }: SearchResultCardProps) {
   const Icon = KIND_ICON[result.kind];
+  
+  let href = "#";
+  if (result.kind === "document") href = `/editor/${result.id}`;
+  else if (result.kind === "folder") href = `/folders/${result.id}`;
+  else if (result.kind === "user") href = `/profile/${result.id}`;
 
   return (
-    <article className="group flex cursor-pointer items-center gap-4 rounded-xl border border-transparent px-4 py-3 transition hover:border-[var(--border)] hover:bg-white hover:shadow-sm">
+    <Link 
+      href={href}
+      className="group flex cursor-pointer items-center gap-4 rounded-xl border border-transparent px-4 py-3 transition hover:border-[var(--border)] hover:bg-white hover:shadow-sm"
+    >
       {result.kind === "user" ? (
         <Avatar name={result.title} size="md" />
       ) : (
@@ -86,6 +96,6 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
           </span>
         )}
       </div>
-    </article>
+    </Link>
   );
 }

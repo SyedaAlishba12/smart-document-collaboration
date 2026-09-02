@@ -5,6 +5,7 @@ import uuid
 from models.document import Document
 from models.workspace import Workspace
 from models.user import User
+from models.permission import Permission, PermissionLevel, SharingScope
 from schemas.document_schema import DocumentCreate, DocumentUpdate, DocumentAutosave, DocumentMove, DocumentFavorite
 
 class DocumentService:
@@ -75,6 +76,18 @@ class DocumentService:
         )
         
         db.add(new_doc)
+        await db.flush()  # flush to get new_doc.id before creating permission
+
+        # 4. Grant owner permission to the creator
+        new_perm = Permission(
+            document_id=new_doc.id,
+            user_id=owner_id,
+            permission_level=PermissionLevel.owner,
+            granted_by=owner_id,
+            sharing_scope=SharingScope.private
+        )
+        db.add(new_perm)
+
         await db.commit()
         await db.refresh(new_doc)
         return new_doc

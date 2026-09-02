@@ -1,59 +1,71 @@
-﻿"use client";
+"use client";
 
 /**
  * ShareDialog — modal for sharing a document with people and managing access.
  *
  * Composes: Modal, AccessRow, LinkSharingToggle, SearchInput, Select, Button.
  *
- * All data is hardcoded mock data with TODO comments pointing to the real
- * API endpoints.  Wire up once POST /api/documents/{id}/share and
- * GET /api/documents/{id}/permissions are live.
+ * Data is fetched from the real API:
+ *   GET  /api/documents/{id}/permissions
+ *   POST /api/documents/{id}/share
+ *   PUT  /api/documents/{id}/permissions/{permId}
+ *   DELETE /api/documents/{id}/permissions/{permId}
+ *   POST /api/documents/{id}/link_sharing
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import SearchInput from "@/components/shared/SearchInput";
 import Toast from "@/components/ui/Toast";
+import Spinner from "@/components/ui/Spinner";
 import AccessRow, { AccessEntry } from "./AccessRow";
 import LinkSharingToggle from "./LinkSharingToggle";
 import { PermissionLevel } from "@/components/shared/PermissionBadge";
+import {
+  getPermissions,
+  shareDocument,
+  updatePermission,
+  revokePermission,
+  configureLinkSharing,
+  PermissionEntry,
+} from "@/lib/permissions_api";
+import { searchUsers } from "@/lib/search_api";
 
 interface ShareDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Document being shared — name shown in modal title. */
   documentName: string;
-  /** TODO: replace with real document ID once API is wired. */
   documentId: string;
 }
 
-// ---------------------------------------------------------------------------
-// Mock data — replace with API calls
-// ---------------------------------------------------------------------------
+// Map API level string → PermissionLevel used by UI components
+function toUiLevel(level: string): PermissionLevel {
+  const map: Record<string, PermissionLevel> = {
+    owner: "Owner",
+    editor: "Editor",
+    commenter: "Commenter",
+    viewer: "Viewer",
+  };
+  return map[level] ?? "Viewer";
+}
 
-const MOCK_ACCESS_LIST: AccessEntry[] = [
-  {
-    id: "1",
-    name: "Alishba Syeda",
-    email: "alishba@studiodocs.io",
-    permissionLevel: "Owner",
-    isOwner: true,
-  },
-  {
-    id: "2",
-    name: "Sayeel Ahmed",
-    email: "sayeel@studiodocs.io",
-    permissionLevel: "Editor",
-  },
-  {
-    id: "3",
-    name: "Hamza Rauf",
-    email: "hamza@studiodocs.io",
-    permissionLevel: "Viewer",
-  },
-];
+function toApiLevel(level: PermissionLevel): string {
+  return level.toLowerCase();
+}
+
+// Convert a PermissionEntry from the API into the AccessEntry shape the UI expects
+function toAccessEntry(p: PermissionEntry): AccessEntry {
+  return {
+    id: p.id,
+    name: p.user_name,
+    email: p.user_email,
+    avatarUrl: p.user_avatar_url ?? undefined,
+    permissionLevel: toUiLevel(p.permission_level),
+    isOwner: p.permission_level === "owner",
+  };
+}
 
 export default function ShareDialog({
   open,
@@ -61,46 +73,155 @@ export default function ShareDialog({
   documentName,
   documentId,
 }: ShareDialogProps) {
-  const [accessList, setAccessList] = useState<AccessEntry[]>(MOCK_ACCESS_LIST);
+  const [accessList, setAccessList] = useState<AccessEntry[]>([]);
+  const [loading, setLoading] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteLevel, setInviteLevel] = useState<PermissionLevel>("Viewer");
+  const [inviting, setInviting] = useState(false);
   const [linkEnabled, setLinkEnabled] = useState(false);
   const [linkLevel, setLinkLevel] = useState<"Editor" | "Commenter" | "Viewer">("Viewer");
-  const [toast, setToast] = useState<{ show: boolean; message: string }>({
-    show: false,
-    message: "",
-  });
+  const [shareableLink, setShareableLink] = useState<string | undefined>();
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    variant: "success" | "error";
+  }>({ show: false, message: "", variant: "success" });
 
-  // TODO: replace with POST /api/documents/{documentId}/share
-  const handleInvite = () => {
+  const showToast = (message: string, variant: "success" | "error" = "success") => {
+    setToast({ show: true, message, variant });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Fetch permission list on open
+  // ---------------------------------------------------------------------------
+  const fetchPermissions = useCallback(async () => {
+    if (!open || !documentId) return;
+    setLoading(true);
+    try {
+      const res = await getPermissions(documentId);
+      if (res.success && res.data) {
+        setAccessList(res.data.items.map(toAccessEntry));
+      }
+    } catch (err: any) {
+      showToast(err?.message || "Failed to load access list.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [open, documentId]);
+
+  useEffect(() => {
+    fetchPermissions();
+  }, [fetchPermissions]);
+
+  // ---------------------------------------------------------------------------
+  // Invite a user
+  // ---------------------------------------------------------------------------
+  const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
-    const newEntry: AccessEntry = {
-      id: Date.now().toString(),
-      name: inviteEmail,
-      email: inviteEmail,
-      permissionLevel: inviteLevel,
-    };
-    setAccessList((prev) => [...prev, newEntry]);
-    setInviteEmail("");
-    setToast({ show: true, message: `Invite sent to ${inviteEmail}` });
+    setInviting(true);
+    try {
+      // First resolve the user UUID via search by matching the email string
+      const searchRes = await searchUsers({ query: inviteEmail.trim(), limit: 1 });
+      const foundUser = searchRes.data?.items?.[0];
+
+      if (!foundUser) {
+        showToast("User not found.", "error");
+        setInviting(false);
+        return;
+      }
+
+      // Now grant them access
+      const shareRes = await shareDocument(documentId, {
+        user_id: foundUser.id,
+        permission_level: toApiLevel(inviteLevel) as any,
+        sharing_scope: "private"
+      });
+
+      if (shareRes.success) {
+        showToast(`Invite sent to ${inviteEmail}`, "success");
+        setInviteEmail("");
+        await fetchPermissions(); // refresh the list
+      } else {
+        showToast(shareRes.message || "Failed to send invite.", "error");
+      }
+    } catch (err: any) {
+      showToast(err?.message || "Failed to send invite.", "error");
+    } finally {
+      setInviting(false);
+    }
   };
 
-  // TODO: replace with PUT /api/documents/{documentId}/permissions/{permissionId}
-  const handleChangeLevel = (entryId: string, newLevel: PermissionLevel) => {
-    setAccessList((prev) =>
-      prev.map((e) => (e.id === entryId ? { ...e, permissionLevel: newLevel } : e))
-    );
+  // ---------------------------------------------------------------------------
+  // Change a user's level
+  // ---------------------------------------------------------------------------
+  const handleChangeLevel = async (entryId: string, newLevel: PermissionLevel) => {
+    try {
+      const res = await updatePermission(documentId, entryId, {
+        permission_level: toApiLevel(newLevel) as any,
+      });
+      if (res.success) {
+        setAccessList((prev) =>
+          prev.map((e) =>
+            e.id === entryId ? { ...e, permissionLevel: newLevel } : e
+          )
+        );
+        showToast("Permission updated.");
+      }
+    } catch {
+      showToast("Failed to update permission.", "error");
+    }
   };
 
-  // TODO: replace with DELETE /api/documents/{documentId}/permissions/{permissionId}
-  const handleRemove = (entryId: string) => {
-    setAccessList((prev) => prev.filter((e) => e.id !== entryId));
+  // ---------------------------------------------------------------------------
+  // Remove access
+  // ---------------------------------------------------------------------------
+  const handleRemove = async (entryId: string) => {
+    try {
+      const res = await revokePermission(documentId, entryId);
+      if (res.success) {
+        setAccessList((prev) => prev.filter((e) => e.id !== entryId));
+        showToast("Access removed.");
+      }
+    } catch {
+      showToast("Failed to remove access.", "error");
+    }
   };
 
-  // TODO: replace with POST /api/documents/{documentId}/link_sharing
-  const handleToggleLink = (enabled: boolean) => setLinkEnabled(enabled);
-  const handleChangeLinkLevel = (level: "Editor" | "Commenter" | "Viewer") =>
+  // ---------------------------------------------------------------------------
+  // Link sharing
+  // ---------------------------------------------------------------------------
+  const handleToggleLink = async (enabled: boolean) => {
+    try {
+      const res = await configureLinkSharing(documentId, {
+        enabled,
+        link_permission_level: toApiLevel(linkLevel) as any,
+      });
+      if (res.success && res.data) {
+        setLinkEnabled(res.data.enabled);
+        setShareableLink(res.data.shareable_link ?? undefined);
+        showToast(enabled ? "Link sharing enabled." : "Link sharing disabled.");
+      }
+    } catch {
+      showToast("Failed to update link sharing.", "error");
+    }
+  };
+
+  const handleChangeLinkLevel = async (level: "Editor" | "Commenter" | "Viewer") => {
     setLinkLevel(level);
+    if (linkEnabled) {
+      try {
+        const res = await configureLinkSharing(documentId, {
+          enabled: true,
+          link_permission_level: toApiLevel(level) as any,
+        });
+        if (res.success && res.data) {
+          setShareableLink(res.data.shareable_link ?? undefined);
+        }
+      } catch {
+        showToast("Failed to update link level.", "error");
+      }
+    }
+  };
 
   return (
     <>
@@ -137,10 +258,10 @@ export default function ShareDialog({
             variant="primary"
             size="md"
             onClick={handleInvite}
-            disabled={!inviteEmail.trim()}
+            disabled={!inviteEmail.trim() || inviting}
             className="shrink-0"
           >
-            Invite
+            {inviting ? "Inviting..." : "Invite"}
           </Button>
         </div>
 
@@ -149,16 +270,28 @@ export default function ShareDialog({
           <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-[var(--muted)]">
             People with access
           </p>
-          <div className="divide-y divide-[var(--border)]">
-            {accessList.map((entry) => (
-              <AccessRow
-                key={entry.id}
-                entry={entry}
-                onChangeLevel={handleChangeLevel}
-                onRemove={handleRemove}
-              />
-            ))}
-          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-6">
+              <Spinner />
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--border)]">
+              {accessList.map((entry) => (
+                <AccessRow
+                  key={entry.id}
+                  entry={entry}
+                  onChangeLevel={handleChangeLevel}
+                  onRemove={handleRemove}
+                />
+              ))}
+              {accessList.length === 0 && (
+                <p className="py-4 text-center text-sm text-[var(--muted)]">
+                  No one has access yet. Invite someone above.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Link sharing */}
@@ -171,11 +304,7 @@ export default function ShareDialog({
             linkPermissionLevel={linkLevel}
             onToggle={handleToggleLink}
             onChangeLinkLevel={handleChangeLinkLevel}
-            shareableLink={
-              linkEnabled
-                ? `https://studiodocs.io/d/${documentId}?share=link`
-                : undefined
-            }
+            shareableLink={shareableLink}
           />
         </div>
 
@@ -190,8 +319,8 @@ export default function ShareDialog({
       <Toast
         show={toast.show}
         message={toast.message}
-        variant="success"
-        onClose={() => setToast({ show: false, message: "" })}
+        variant={toast.variant === "error" ? "error" : "success"}
+        onClose={() => setToast((t) => ({ ...t, show: false }))}
       />
     </>
   );

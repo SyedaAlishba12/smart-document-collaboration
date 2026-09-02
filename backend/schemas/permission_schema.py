@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pydantic schemas for the Permissions & Sharing API.
 
 These validate request bodies and shape response payloads only.
@@ -35,11 +35,16 @@ ResourceTypeLiteral = Literal["document", "folder"]
 
 
 class PermissionResponse(BaseModel):
-    """Shape of a single permission grant returned to the client."""
+    """
+    Shape of a single permission grant returned to the client.
+
+    Maps directly to the Permission ORM model columns:
+    - document_id  : the protected document (was resource_id in old schema)
+    - permission_level, sharing_scope, granted_by, created_at, updated_at
+    """
 
     id: uuid.UUID
-    resource_type: ResourceTypeLiteral
-    resource_id: uuid.UUID
+    document_id: uuid.UUID
     user_id: uuid.UUID
     permission_level: PermissionLevelLiteral
     sharing_scope: SharingScopeLiteral
@@ -48,6 +53,35 @@ class PermissionResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PermissionWithUserResponse(BaseModel):
+    """
+    Extended permission response that includes the user's display name and
+    email — used by GET /api/documents/{id}/permissions so the frontend can
+    render the access list without a separate user lookup.
+    """
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    user_id: uuid.UUID
+    user_name: str
+    user_email: str
+    user_avatar_url: Optional[str] = None
+    permission_level: PermissionLevelLiteral
+    sharing_scope: SharingScopeLiteral
+    granted_by: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PermissionListResponse(BaseModel):
+    """Paginated list of permissions for a document."""
+
+    total: int
+    items: list[PermissionWithUserResponse]
 
 
 # ---------------------------------------------------------------------------

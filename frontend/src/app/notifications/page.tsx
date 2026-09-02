@@ -1,136 +1,168 @@
-﻿"use client";
+"use client";
 
 /**
  * /notifications — full-page notifications view.
  *
- * Uses mock data. Wire to:
- *   GET  /api/notifications              (all tab)
- *   GET  /api/notifications/unread       (unread tab)
+ * Fetches from the real API:
+ *   GET  /api/notifications        (all tab)
+ *   GET  /api/notifications/unread (unread tab)
  *   PUT  /api/notifications/{id}/read
  *   PUT  /api/notifications/read_all
  *   DELETE /api/notifications/{id}
- *
- * TODO: replace MOCK_NOTIFICATIONS with fetch calls once the backend is live
- * (pending User model merge).
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import NotificationList from "@/components/notifications/NotificationList";
 import Toast from "@/components/ui/Toast";
+import Spinner from "@/components/ui/Spinner";
 import { NotificationData } from "@/components/notifications/NotificationItem";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  NotificationItem,
+} from "@/lib/notifications_api";
+import { formatDistanceToNow } from "date-fns";
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-const INITIAL_NOTIFICATIONS: NotificationData[] = [
-  {
-    id: "1",
-    type: "share",
-    message: "Sayeel Ahmed shared \"Engineering Sprint Plan\" with you.",
-    isRead: false,
-    createdAt: "2 minutes ago",
-    resourceType: "document",
-    resourceId: "doc-1",
-  },
-  {
-    id: "2",
-    type: "mention",
-    message: "Hamza Rauf mentioned you in a comment on \"Q3 Roadmap\".",
-    isRead: false,
-    createdAt: "1 hour ago",
-    resourceType: "document",
-    resourceId: "doc-2",
-  },
-  {
-    id: "3",
-    type: "comment",
-    message: "New comment on \"Brand Guidelines v2\": \"Can we update the colour palette?\"",
-    isRead: false,
-    createdAt: "3 hours ago",
-    resourceType: "document",
-    resourceId: "doc-3",
-  },
-  {
-    id: "4",
-    type: "permission_change",
-    message: "Your access to \"Product Roadmap\" was changed from Viewer to Editor.",
-    isRead: true,
-    createdAt: "Yesterday",
-    resourceType: "document",
-    resourceId: "doc-4",
-  },
-  {
-    id: "5",
-    type: "reply",
-    message: "Fatima replied to your comment on \"Design System v3\".",
-    isRead: true,
-    createdAt: "2 days ago",
-    resourceType: "document",
-    resourceId: "doc-5",
-  },
-  {
-    id: "6",
-    type: "document_update",
-    message: "\"Engineering Sprint Plan\" was updated by Sayeel Ahmed.",
-    isRead: true,
-    createdAt: "3 days ago",
-    resourceType: "document",
-    resourceId: "doc-1",
-  },
-];
+// Convert the API shape to the shape NotificationItem component expects
+function toUiNotification(n: NotificationItem): NotificationData {
+  let createdAt = n.created_at;
+  try {
+    createdAt = formatDistanceToNow(new Date(n.created_at), { addSuffix: true });
+  } catch {
+    // fallback to raw string if parsing fails
+  }
+  return {
+    id: n.id,
+    type: n.type,
+    message: n.message,
+    isRead: n.is_read,
+    createdAt,
+    resourceType: n.resource_type,
+    resourceId: n.resource_id,
+  };
+}
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<NotificationData[]>(
-    INITIAL_NOTIFICATIONS
-  );
+  const router = useRouter();
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{
     show: boolean;
     message: string;
     variant: "success" | "info";
   }>({ show: false, message: "", variant: "success" });
 
-  // TODO: PUT /api/notifications/{id}/read
-  const handleMarkRead = (id: string) => {
+  // ---------------------------------------------------------------------------
+  // Fetch all notifications on mount
+  // ---------------------------------------------------------------------------
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getNotifications(50, 0);
+      if (res.success && res.data) {
+        setNotifications(res.data.items.map(toUiNotification));
+      }
+    } catch {
+      // Keep existing list on network error; page still usable
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // ---------------------------------------------------------------------------
+  // Mark single notification as read (optimistic update)
+  // ---------------------------------------------------------------------------
+  const handleMarkRead = async (id: string) => {
+    // Optimistic update
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
+    try {
+      await markNotificationRead(id);
+    } catch {
+      // Revert optimistic update on failure
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: false } : n))
+      );
+    }
   };
 
-  // TODO: PUT /api/notifications/read_all
-  const handleMarkAllRead = () => {
+  // ---------------------------------------------------------------------------
+  // Mark all as read (optimistic update)
+  // ---------------------------------------------------------------------------
+  const handleMarkAllRead = async () => {
+    const previous = notifications;
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    setToast({ show: true, message: "All notifications marked as read.", variant: "success" });
+    try {
+      const res = await markAllNotificationsRead();
+      if (res.success) {
+        setToast({
+          show: true,
+          message: "All notifications marked as read.",
+          variant: "success",
+        });
+      }
+    } catch {
+      setNotifications(previous); // revert
+    }
   };
 
-  // TODO: DELETE /api/notifications/{id}
-  const handleDelete = (id: string) => {
+  // ---------------------------------------------------------------------------
+  // Delete notification (optimistic update)
+  // ---------------------------------------------------------------------------
+  const handleDelete = async (id: string) => {
+    const previous = notifications;
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-    setToast({ show: true, message: "Notification deleted.", variant: "info" });
+    try {
+      await deleteNotification(id);
+      setToast({ show: true, message: "Notification deleted.", variant: "info" });
+    } catch {
+      setNotifications(previous); // revert
+    }
   };
 
   return (
     <main className="min-h-screen bg-[var(--background)] p-6">
       <div className="mx-auto max-w-2xl">
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">
-            Notifications
-          </h1>
-          <p className="mt-0.5 text-sm text-[var(--muted)]">
-            Stay up to date with your documents and workspace.{" "}
-            <span className="italic opacity-60">
-              (Mock data — API pending model merge)
-            </span>
-          </p>
+        <div className="mb-5 flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] bg-white text-[var(--muted)] transition hover:bg-gray-50 hover:text-[var(--foreground)]"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">
+              Notifications
+            </h1>
+            <p className="mt-0.5 text-sm text-[var(--muted)]">
+              Stay up to date with your documents and workspace.
+            </p>
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-sm">
-          <NotificationList
-            notifications={notifications}
-            onMarkRead={handleMarkRead}
-            onMarkAllRead={handleMarkAllRead}
-            onDelete={handleDelete}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center py-24">
+              <Spinner />
+            </div>
+          ) : (
+            <NotificationList
+              notifications={notifications}
+              onMarkRead={handleMarkRead}
+              onMarkAllRead={handleMarkAllRead}
+              onDelete={handleDelete}
+            />
+          )}
         </div>
       </div>
 

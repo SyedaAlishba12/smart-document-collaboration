@@ -80,7 +80,7 @@ async def global_search(
             limit=limit, offset=offset,
         )
 
-    return _envelope(success=True, message="Search completed.", data=result)
+    return _envelope(success=True, message="Search completed.", data=result.model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +110,7 @@ async def search_documents(
         date_from=date_from, date_to=date_to,
         limit=limit, offset=offset,
     )
-    return _envelope(success=True, message="Document search completed.", data=result)
+    return _envelope(success=True, message="Document search completed.", data=result.model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +137,7 @@ async def search_folders(
         workspace_id=workspace_id,
         limit=limit, offset=offset,
     )
-    return _envelope(success=True, message="Folder search completed.", data=result)
+    return _envelope(success=True, message="Folder search completed.", data=result.model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -163,4 +163,4 @@ async def search_users(
         db, query,
         limit=limit, offset=offset,
     )
-    return _envelope(success=True, message="User search completed.", data=result)
+    return _envelope(success=True, message="User search completed.", data=result.model_dump(mode="json"))
