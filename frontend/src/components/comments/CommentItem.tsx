@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, MoreHorizontal, Check } from "lucide-react";
+import { MoreHorizontal, Check } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import ReplyInput from "./ReplyInput";
@@ -43,7 +43,6 @@ export default function CommentItem({
 
   return (
     <div className="group rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      {/* Header */}
       <div className="flex items-start gap-3">
         <Avatar src={authorAvatar} name={author} size="sm" />
 
@@ -85,7 +84,6 @@ export default function CommentItem({
         />
       </div>
 
-      {/* Replies */}
       {replies.length > 0 && (
         <div className="mt-3 space-y-2 border-l border-[var(--border)] pl-4">
           {replies.map((reply) => (
@@ -107,7 +105,6 @@ export default function CommentItem({
         </div>
       )}
 
-      {/* Reply input */}
       {showReply && (
         <div className="mt-3">
           <ReplyInput
@@ -119,16 +116,12 @@ export default function CommentItem({
         </div>
       )}
 
-      {/* Footer */}
       <div className="mt-3 flex items-center gap-3">
         <button
           className="text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
           onClick={() => setShowReply((v) => !v)}
         >
           Reply
-        </button>
-        <button className="text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)]">
-          Share
         </button>
       </div>
     </div>

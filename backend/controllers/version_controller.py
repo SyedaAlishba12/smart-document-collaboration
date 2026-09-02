@@ -3,6 +3,8 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.document import Document
+
 from schemas.document_version import DocumentVersionCreate
 from services.document_version_service import DocumentVersionService
 
@@ -52,8 +54,22 @@ async def restore_version(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Version not found",
         )
-    # Create a new version with the content of the old one
+
+    # Update the actual Document content (Zainab's model)
+    document = await session.get(Document, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    document.content = version.content
+    await session.commit()
+    await session.refresh(document)
+
+    # Create a new version to record this restore action
     new_version = await DocumentVersionService.create_version(
-        session, document_id, version.created_by, version.content
+        session, document_id, version.created_by, document.content
     )
+
     return new_version

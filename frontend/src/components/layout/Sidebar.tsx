@@ -60,6 +60,11 @@ const workspaceNavigation = [
 
 const collaborationNavigation = [
   {
+    label: "Collaboration",
+    icon: Users,
+    href: "/collaboration",
+  },
+  {
     label: "Shared with Me",
     icon: Share2,
     href: "/documents/shared",
