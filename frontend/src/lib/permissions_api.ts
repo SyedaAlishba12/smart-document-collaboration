@@ -1,18 +1,30 @@
 /**
- * permissions_api.ts — typed wrappers around apiFetch for the permissions endpoints.
+ * permissions_api.ts — typed wrappers around the shared API client
+ * for the permissions endpoints.
  *
- * All functions return the full API envelope: { success, message, data }
- * Callers should read `.data` for the payload and check `.success` for errors.
+ * All functions return the full API envelope:
+ * { success, message, data }
+ *
+ * Callers should read `.data` for the payload and check `.success`
+ * for errors.
  */
 
-import apiFetch from "./api";
+import api from "./api_client";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type PermissionLevel = "owner" | "editor" | "commenter" | "viewer";
-export type SharingScope = "private" | "workspace" | "anyone_with_link";
+export type PermissionLevel =
+  | "owner"
+  | "editor"
+  | "commenter"
+  | "viewer";
+
+export type SharingScope =
+  | "private"
+  | "workspace"
+  | "anyone_with_link";
 
 export interface PermissionEntry {
   id: string;
@@ -62,14 +74,17 @@ interface ApiResponse<T> {
 
 /**
  * GET /api/documents/{documentId}/permissions
- * Returns all users who have access to a document, including their name/email.
+ * Returns all users who have access to a document,
+ * including their name/email.
  */
 export async function getPermissions(
   documentId: string
 ): Promise<ApiResponse<PermissionListData>> {
-  return apiFetch<ApiResponse<PermissionListData>>(
+  const response = await api.get<ApiResponse<PermissionListData>>(
     `/api/documents/${documentId}/permissions`
   );
+
+  return response.data;
 }
 
 /**
@@ -85,10 +100,12 @@ export async function shareDocument(
     message?: string;
   }
 ): Promise<ApiResponse<PermissionData>> {
-  return apiFetch<ApiResponse<PermissionData>>(
+  const response = await api.post<ApiResponse<PermissionData>>(
     `/api/documents/${documentId}/share`,
-    { method: "POST", body }
+    body
   );
+
+  return response.data;
 }
 
 /**
@@ -103,10 +120,12 @@ export async function updatePermission(
     sharing_scope?: SharingScope;
   }
 ): Promise<ApiResponse<PermissionData>> {
-  return apiFetch<ApiResponse<PermissionData>>(
+  const response = await api.put<ApiResponse<PermissionData>>(
     `/api/documents/${documentId}/permissions/${permissionId}`,
-    { method: "PUT", body }
+    body
   );
+
+  return response.data;
 }
 
 /**
@@ -117,10 +136,11 @@ export async function revokePermission(
   documentId: string,
   permissionId: string
 ): Promise<ApiResponse<null>> {
-  return apiFetch<ApiResponse<null>>(
-    `/api/documents/${documentId}/permissions/${permissionId}`,
-    { method: "DELETE" }
+  const response = await api.delete<ApiResponse<null>>(
+    `/api/documents/${documentId}/permissions/${permissionId}`
   );
+
+  return response.data;
 }
 
 /**
@@ -134,8 +154,11 @@ export async function configureLinkSharing(
     link_permission_level?: PermissionLevel;
   }
 ): Promise<ApiResponse<LinkSharingData>> {
-  return apiFetch<ApiResponse<LinkSharingData>>(
+  const response = await api.post<ApiResponse<LinkSharingData>>(
     `/api/documents/${documentId}/link_sharing`,
-    { method: "POST", body }
+    body
   );
+
+  return response.data;
 }
+

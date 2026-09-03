@@ -34,6 +34,9 @@ from routes.activity_log_routes import router as activity_log_router
 # Fatima's routers
 from routes import auth_routes, user_routes, workspace_routes
 
+
+from routes.dashboard_routes import router as dashboard_router
+
 load_dotenv()
 
 
@@ -89,6 +92,9 @@ app.include_router(file_router)
 app.include_router(auth_routes.router)
 app.include_router(user_routes.router)
 app.include_router(workspace_routes.router)
+
+
+app.include_router(dashboard_router)
 
 
 # ---------------------------------------------------------

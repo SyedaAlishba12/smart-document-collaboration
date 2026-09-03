@@ -5,7 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import CommentThread from "@/components/comments/CommentThread";
 import PresenceIndicator from "@/components/collaboration/PresenceIndicator";
 import { useParams } from "next/navigation";
-import apiFetch from "@/lib/api";
+import api from "@/lib/api_client";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
 export default function CommentsPage() {
@@ -14,7 +14,8 @@ export default function CommentsPage() {
 
   const userId =
     typeof window !== "undefined"
-      ? localStorage.getItem("user_id") || "00000000-0000-0000-0000-000000000001"
+      ? localStorage.getItem("user_id") ||
+        "00000000-0000-0000-0000-000000000001"
       : "00000000-0000-0000-0000-000000000001";
 
   const [comments, setComments] = useState<any[]>([]);
@@ -31,15 +32,17 @@ export default function CommentsPage() {
 
   async function fetchUsers() {
     try {
-      const response = await apiFetch<any>(`/api/search/users?query=`);
-      const users = response.data || [];
+      const response = await api.get("/api/search/users?query=");
+      const users = response.data?.data || [];
+
       const map: Record<string, string> = {};
+
       users.forEach((u: any) => {
         map[u.id] = u.full_name || u.name || u.email;
       });
+
       setUserMap(map);
     } catch (err) {
-      // fallback mock
       setUserMap({
         "00000000-0000-0000-0000-000000000001": "You",
       });
@@ -48,12 +51,23 @@ export default function CommentsPage() {
 
   async function fetchComments() {
     try {
-      const data = await apiFetch<any[]>(`/api/documents/${documentId}/comments`);
+      const response = await api.get(
+        `/api/documents/${documentId}/comments`
+      );
+
+      const data = response.data;
+
       const commentsWithReplies = await Promise.all(
-        data.map(async (comment) => {
+        data.map(async (comment: any) => {
           let replies: any[] = [];
+
           try {
-            const replyData = await apiFetch<any[]>(`/api/comments/${comment.id}/replies`);
+            const replyResponse = await api.get(
+              `/api/comments/${comment.id}/replies`
+            );
+
+            const replyData = replyResponse.data;
+
             replies = replyData.map((r: any) => ({
               id: r.id,
               author: userMap[r.user_id] || "User",
@@ -61,18 +75,20 @@ export default function CommentsPage() {
               createdAt: new Date(r.created_at).toLocaleString(),
             }));
           } catch (e) {
-            // ignore
+            // Ignore reply loading errors
           }
+
           return {
             id: comment.id,
             author: userMap[comment.user_id] || "User",
             content: comment.content,
             createdAt: new Date(comment.created_at).toLocaleString(),
             status: comment.status,
-            replies: replies,
+            replies,
           };
         })
       );
+
       setComments(commentsWithReplies);
     } catch (err: any) {
       setError(err.message || "Failed to load comments");
@@ -83,17 +99,22 @@ export default function CommentsPage() {
 
   async function handleAddComment(content: string) {
     try {
-      const newComment = await apiFetch<any>(`/api/documents/${documentId}/comments`, {
-        method: "POST",
-        body: { content },
-      });
+      const response = await api.post(
+        `/api/documents/${documentId}/comments`,
+        { content }
+      );
+
+      const newComment = response.data;
+
       setComments((prev) => [
         ...prev,
         {
           id: newComment.id,
           author: userMap[newComment.user_id] || "You",
           content: newComment.content,
-          createdAt: new Date(newComment.created_at).toLocaleString(),
+          createdAt: new Date(
+            newComment.created_at
+          ).toLocaleString(),
           status: newComment.status,
           replies: [],
         },
@@ -105,10 +126,13 @@ export default function CommentsPage() {
 
   async function handleReply(commentId: string, content: string) {
     try {
-      const reply = await apiFetch<any>(`/api/comments/${commentId}/replies`, {
-        method: "POST",
-        body: { content },
-      });
+      const response = await api.post(
+        `/api/comments/${commentId}/replies`,
+        { content }
+      );
+
+      const reply = response.data;
+
       setComments((prev) =>
         prev.map((c) =>
           c.id === commentId
@@ -134,12 +158,17 @@ export default function CommentsPage() {
 
   async function handleResolve(commentId: string) {
     try {
-      const updated = await apiFetch<any>(`/api/comments/${commentId}/resolve`, {
-        method: "POST",
-      });
+      const response = await api.post(
+        `/api/comments/${commentId}/resolve`
+      );
+
+      const updated = response.data;
+
       setComments((prev) =>
         prev.map((c) =>
-          c.id === commentId ? { ...c, status: updated.status } : c
+          c.id === commentId
+            ? { ...c, status: updated.status }
+            : c
         )
       );
     } catch (err: any) {
@@ -149,8 +178,10 @@ export default function CommentsPage() {
 
   async function handleDelete(commentId: string) {
     try {
-      await apiFetch(`/api/comments/${commentId}`, { method: "DELETE" });
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      await api.delete(`/api/comments/${commentId}`);
+      setComments((prev) =>
+        prev.filter((c) => c.id !== commentId)
+      );
     } catch (err: any) {
       alert(err.message);
     }
@@ -166,6 +197,7 @@ export default function CommentsPage() {
           <h1 className="text-2xl font-semibold">Comments</h1>
           <PresenceIndicator activeCount={users.length} />
         </div>
+
         <div className="h-[600px] rounded-2xl border border-[var(--border)] bg-white">
           <CommentThread
             comments={comments}
@@ -179,3 +211,4 @@ export default function CommentsPage() {
     </MainLayout>
   );
 }
+

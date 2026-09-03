@@ -1,8 +1,9 @@
 /**
- * notifications_api.ts — typed wrappers around apiFetch for the notifications endpoints.
+ * notifications_api.ts — typed wrappers around the shared API client
+ * for the notifications endpoints.
  */
 
-import apiFetch from "./api";
+import api from "./api_client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,9 +53,11 @@ export async function getNotifications(
   limit = 20,
   offset = 0
 ): Promise<ApiResponse<NotificationListData>> {
-  return apiFetch<ApiResponse<NotificationListData>>(
+  const response = await api.get<ApiResponse<NotificationListData>>(
     `/api/notifications?limit=${limit}&offset=${offset}`
   );
+
+  return response.data;
 }
 
 /**
@@ -65,9 +68,11 @@ export async function getUnreadNotifications(
   limit = 20,
   offset = 0
 ): Promise<ApiResponse<NotificationListData>> {
-  return apiFetch<ApiResponse<NotificationListData>>(
+  const response = await api.get<ApiResponse<NotificationListData>>(
     `/api/notifications/unread?limit=${limit}&offset=${offset}`
   );
+
+  return response.data;
 }
 
 /**
@@ -77,10 +82,11 @@ export async function getUnreadNotifications(
 export async function markNotificationRead(
   id: string
 ): Promise<ApiResponse<NotificationItem>> {
-  return apiFetch<ApiResponse<NotificationItem>>(
-    `/api/notifications/${id}/read`,
-    { method: "PUT" }
+  const response = await api.put<ApiResponse<NotificationItem>>(
+    `/api/notifications/${id}/read`
   );
+
+  return response.data;
 }
 
 /**
@@ -90,10 +96,11 @@ export async function markNotificationRead(
 export async function markAllNotificationsRead(): Promise<
   ApiResponse<{ updated_count: number }>
 > {
-  return apiFetch<ApiResponse<{ updated_count: number }>>(
-    `/api/notifications/read_all`,
-    { method: "PUT" }
+  const response = await api.put<ApiResponse<{ updated_count: number }>>(
+    `/api/notifications/read_all`
   );
+
+  return response.data;
 }
 
 /**
@@ -103,7 +110,10 @@ export async function markAllNotificationsRead(): Promise<
 export async function deleteNotification(
   id: string
 ): Promise<ApiResponse<null>> {
-  return apiFetch<ApiResponse<null>>(`/api/notifications/${id}`, {
-    method: "DELETE",
-  });
+  const response = await api.delete<ApiResponse<null>>(
+    `/api/notifications/${id}`
+  );
+
+  return response.data;
 }
+

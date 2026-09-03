@@ -1,14 +1,18 @@
 /**
- * search_api.ts — typed wrappers around apiFetch for the search endpoints.
+ * search_api.ts — typed wrappers around the shared API client
+ * for the search endpoints.
  */
 
-import apiFetch from "./api";
+import api from "./api_client";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type ResourceKind = "document" | "folder" | "user";
+export type ResourceKind =
+  | "document"
+  | "folder"
+  | "user";
 
 export interface SearchResultItem {
   id: string;
@@ -49,11 +53,22 @@ interface ApiResponse<T> {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildQueryString(params: Record<string, string | number | undefined>): string {
+function buildQueryString(
+  params: Record<string, string | number | undefined>
+): string {
   const qs = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== "" && v !== null)
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .filter(
+      ([, v]) =>
+        v !== undefined &&
+        v !== "" &&
+        v !== null
+    )
+    .map(
+      ([k, v]) =>
+        `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`
+    )
     .join("&");
+
   return qs ? `?${qs}` : "";
 }
 
@@ -63,7 +78,8 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
 
 /**
  * GET /api/search
- * Global search across all resource types (documents, folders, users).
+ * Global search across all resource types
+ * (documents, folders, users).
  */
 export async function globalSearch(
   params: SearchParams
@@ -78,7 +94,12 @@ export async function globalSearch(
     limit: params.limit ?? 20,
     offset: params.offset ?? 0,
   });
-  return apiFetch<ApiResponse<SearchResultData>>(`/api/search${qs}`);
+
+  const response = await api.get<ApiResponse<SearchResultData>>(
+    `/api/search${qs}`
+  );
+
+  return response.data;
 }
 
 /**
@@ -97,7 +118,12 @@ export async function searchDocuments(
     limit: params.limit ?? 20,
     offset: params.offset ?? 0,
   });
-  return apiFetch<ApiResponse<SearchResultData>>(`/api/search/documents${qs}`);
+
+  const response = await api.get<ApiResponse<SearchResultData>>(
+    `/api/search/documents${qs}`
+  );
+
+  return response.data;
 }
 
 /**
@@ -105,7 +131,10 @@ export async function searchDocuments(
  * Folder name search, optionally scoped to a workspace.
  */
 export async function searchFolders(
-  params: Pick<SearchParams, "query" | "workspace_id" | "limit" | "offset">
+  params: Pick<
+    SearchParams,
+    "query" | "workspace_id" | "limit" | "offset"
+  >
 ): Promise<ApiResponse<SearchResultData>> {
   const qs = buildQueryString({
     query: params.query,
@@ -113,7 +142,12 @@ export async function searchFolders(
     limit: params.limit ?? 20,
     offset: params.offset ?? 0,
   });
-  return apiFetch<ApiResponse<SearchResultData>>(`/api/search/folders${qs}`);
+
+  const response = await api.get<ApiResponse<SearchResultData>>(
+    `/api/search/folders${qs}`
+  );
+
+  return response.data;
 }
 
 /**
@@ -121,12 +155,21 @@ export async function searchFolders(
  * Broad user search for the share-dialog people-picker.
  */
 export async function searchUsers(
-  params: Pick<SearchParams, "query" | "limit" | "offset">
+  params: Pick<
+    SearchParams,
+    "query" | "limit" | "offset"
+  >
 ): Promise<ApiResponse<SearchResultData>> {
   const qs = buildQueryString({
     query: params.query,
     limit: params.limit ?? 20,
     offset: params.offset ?? 0,
   });
-  return apiFetch<ApiResponse<SearchResultData>>(`/api/search/users${qs}`);
+
+  const response = await api.get<ApiResponse<SearchResultData>>(
+    `/api/search/users${qs}`
+  );
+
+  return response.data;
 }
+

@@ -5,7 +5,7 @@ import { Send } from "lucide-react";
 import Textarea from "@/components/ui/Textarea";
 import Button from "@/components/ui/Button";
 import MentionList from "./MentionList";
-import apiFetch from "@/lib/api";
+import api from "@/lib/api_client";
 
 interface CommentInputProps {
   onSubmit: (content: string) => void;
@@ -26,9 +26,9 @@ export default function CommentInput({
   const [mentionUsers, setMentionUsers] = useState<MentionUser[]>([]);
   const [showMentions, setShowMentions] = useState(false);
 
-  // Mention detection logic
   useEffect(() => {
     const match = content.match(/@(\w*)$/);
+
     if (match) {
       setShowMentions(true);
       fetchUsers(match[1]);
@@ -39,8 +39,12 @@ export default function CommentInput({
 
   const fetchUsers = async (query: string) => {
     try {
-      const response = await apiFetch<any>(`/api/search/users?query=${query}`);
-      const users = response.data || [];
+      const response = await api.get(
+        `/api/search/users?query=${encodeURIComponent(query)}`
+      );
+
+      const users = response.data?.data || [];
+
       setMentionUsers(
         users.map((u: any) => ({
           id: u.id,
@@ -57,13 +61,18 @@ export default function CommentInput({
   };
 
   const handleSelectMention = (user: MentionUser) => {
-    const newContent = content.replace(/@(\w*)$/, `@${user.name} `);
+    const newContent = content.replace(
+      /@(\w*)$/,
+      `@${user.name} `
+    );
+
     setContent(newContent);
     setShowMentions(false);
   };
 
   const handleSubmit = () => {
     if (!content.trim()) return;
+
     onSubmit(content.trim());
     setContent("");
   };
@@ -80,7 +89,10 @@ export default function CommentInput({
       />
 
       {showMentions && (
-        <MentionList users={mentionUsers} onSelect={handleSelectMention} />
+        <MentionList
+          users={mentionUsers}
+          onSelect={handleSelectMention}
+        />
       )}
 
       <div className="flex justify-end">
@@ -96,3 +108,4 @@ export default function CommentInput({
     </div>
   );
 }
+

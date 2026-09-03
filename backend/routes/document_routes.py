@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.session import get_db
 from controllers.document_controller import DocumentController
+from middleware.auth_middleware import get_current_user
 
 from schemas.document_schema import (
     DocumentCreate,
@@ -42,36 +43,30 @@ async def get_all_documents(
         None,
         description="Filter documents by workspace ID",
     ),
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Retrieve documents filtered by workspace ID if provided,
-    otherwise fetch all.
-    """
 
-    if (
-        workspace_id
-        and hasattr(
-            DocumentController,
-            "get_documents_by_workspace",
-        )
-    ):
-        return await DocumentController.get_documents_by_workspace(
+    if workspace_id:
+        result = await DocumentController.get_documents_by_workspace(
             db,
             workspace_id,
+            current_user.id,
+        )
+    else:
+        result = await DocumentController.get_all_documents(
+            db,
+            current_user.id,
         )
 
-    result = (
-        await DocumentController.get_all_documents(db)
-        if hasattr(
-            DocumentController,
-            "get_all_documents",
+    if not result.get("success", True):
+        raise HTTPException(
+            status_code=500,
+            detail=result.get(
+                "message",
+                "Failed to fetch documents",
+            ),
         )
-        else {
-            "success": True,
-            "data": [],
-        }
-    )
 
     return result
 
@@ -86,47 +81,17 @@ async def get_all_documents(
 )
 async def create_document(
     doc_data: DocumentCreate,
-    owner_id: Optional[UUID] = Query(
-        None,
-        description="Owner ID from auth",
-    ),
-    workspace_id: Optional[UUID] = Query(
-        None,
-        description="Workspace ID from query parameters",
-    ),
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Create a new document, assigning proper owner
-    and workspace identifiers.
-    """
-
-    if not owner_id:
-        owner_id = UUID(
-            "00000000-0000-0000-0000-000000000000"
-        )
-
-    # Prioritize workspace_id from query parameter if available,
-    # else use workspace_id from payload,
-    # otherwise use fallback.
-    if workspace_id:
-        doc_data.workspace_id = workspace_id
-
-    elif not doc_data.workspace_id:
-        doc_data.workspace_id = UUID(
-            "11111111-1111-1111-1111-111111111111"
-        )
 
     result = await DocumentController.create_document(
         db,
-        owner_id,
+        current_user.id,
         doc_data,
     )
 
-    if not result.get(
-        "success",
-        True,
-    ):
+    if not result.get("success", True):
         raise HTTPException(
             status_code=400,
             detail=result.get(
@@ -145,27 +110,20 @@ async def create_document(
 @router.get("/{document_id}")
 async def get_document(
     document_id: UUID,
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Fetch a single document by its unique UUID.
-    """
 
     result = await DocumentController.get_document(
         db,
         document_id,
+        current_user.id,
     )
 
-    if not result.get(
-        "success",
-        True,
-    ):
+    if not result.get("success", True):
         raise HTTPException(
-            status_code=404,
-            detail=result.get(
-                "message",
-                "Document not found",
-            ),
+            status_code=403,
+            detail="You do not have permission to access this document.",
         )
 
     return result
@@ -179,22 +137,25 @@ async def get_document(
 async def update_document(
     document_id: UUID,
     doc_data: DocumentUpdate,
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Update document properties completely.
-    """
 
-    result = await DocumentController.update_document(
-        db,
-        document_id,
-        doc_data,
-    )
+    try:
+        result = await DocumentController.update_document(
+            db,
+            document_id,
+            current_user.id,
+            doc_data,
+        )
 
-    if not result.get(
-        "success",
-        True,
-    ):
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=403,
+            detail=str(e),
+        )
+
+    if not result.get("success", True):
         raise HTTPException(
             status_code=404,
             detail=result.get(
@@ -214,23 +175,25 @@ async def update_document(
 async def autosave_document(
     document_id: UUID,
     autosave_data: DocumentAutosave,
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Save document content automatically and create
-    a version history snapshot.
-    """
 
-    result = await DocumentController.autosave_document(
-        db,
-        document_id,
-        autosave_data,
-    )
+    try:
+        result = await DocumentController.autosave_document(
+            db,
+            document_id,
+            current_user.id,
+            autosave_data,
+        )
 
-    if not result.get(
-        "success",
-        True,
-    ):
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=403,
+            detail=str(e),
+        )
+
+    if not result.get("success", True):
         raise HTTPException(
             status_code=404,
             detail=result.get(
@@ -250,22 +213,25 @@ async def autosave_document(
 async def move_document(
     document_id: UUID,
     move_data: DocumentMove,
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Move document to a specific folder or location.
-    """
 
-    result = await DocumentController.move_document(
-        db,
-        document_id,
-        move_data,
-    )
+    try:
+        result = await DocumentController.move_document(
+            db,
+            document_id,
+            current_user.id,
+            move_data,
+        )
 
-    if not result.get(
-        "success",
-        True,
-    ):
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=403,
+            detail=str(e),
+        )
+
+    if not result.get("success", True):
         raise HTTPException(
             status_code=404,
             detail=result.get(
@@ -285,22 +251,25 @@ async def move_document(
 async def toggle_favorite(
     document_id: UUID,
     fav_data: DocumentFavorite,
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Toggle favorite status for quick document filtering.
-    """
 
-    result = await DocumentController.toggle_favorite(
-        db,
-        document_id,
-        fav_data,
-    )
+    try:
+        result = await DocumentController.toggle_favorite(
+            db,
+            document_id,
+            current_user.id,
+            fav_data,
+        )
 
-    if not result.get(
-        "success",
-        True,
-    ):
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=403,
+            detail=str(e),
+        )
+
+    if not result.get("success", True):
         raise HTTPException(
             status_code=404,
             detail=result.get(
@@ -322,21 +291,24 @@ async def toggle_favorite(
 )
 async def delete_document(
     document_id: UUID,
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Permanently delete a document by ID.
-    """
 
-    result = await DocumentController.delete_document(
-        db,
-        document_id,
-    )
+    try:
+        result = await DocumentController.delete_document(
+            db,
+            document_id,
+            current_user.id,
+        )
 
-    if not result.get(
-        "success",
-        True,
-    ):
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=403,
+            detail=str(e),
+        )
+
+    if not result.get("success", True):
         raise HTTPException(
             status_code=404,
             detail=result.get(

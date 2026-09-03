@@ -13,10 +13,10 @@ import {
   Settings,
   Share2,
   Star,
-  User,
   Users,
 } from "lucide-react";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -92,6 +92,19 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const { user, initials } = useAuth();
+
+  /*
+   * Wait until the component has mounted on the client
+   * before using pathname for active navigation state.
+   *
+   * This prevents the server-rendered sidebar from
+   * disagreeing with the client during hydration.
+   */
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <aside
@@ -194,14 +207,14 @@ export default function Sidebar({
           title="Workspace"
           items={workspaceNavigation}
           collapsed={collapsed}
-          pathname={pathname}
+          pathname={mounted ? pathname : ""}
         />
 
         <NavigationSection
           title="Collaboration"
           items={collaborationNavigation}
           collapsed={collapsed}
-          pathname={pathname}
+          pathname={mounted ? pathname : ""}
         />
 
       </div>
@@ -214,7 +227,7 @@ export default function Sidebar({
           icon={Bell}
           label="Notifications"
           href="/notifications"
-          active={pathname === "/notifications"}
+          active={mounted && pathname === "/notifications"}
           collapsed={collapsed}
         />
 
@@ -309,9 +322,19 @@ function NavigationSection({
 
         {items.map((item) => {
 
+          /*
+           * Keep /documents from matching nested routes such as:
+           * /documents/shared
+           * /documents/favorites
+           *
+           * This prevents "My Documents" from appearing active
+           * when the user is actually on Favorites or Shared with Me.
+           */
           const isActive =
-            pathname === item.href ||
-            pathname.startsWith(`${item.href}/`);
+            item.href === "/documents"
+              ? pathname === "/documents"
+              : pathname === item.href ||
+                pathname.startsWith(`${item.href}/`);
 
           return (
             <SidebarItem
@@ -432,3 +455,4 @@ function SidebarItem({
     </button>
   );
 }
+

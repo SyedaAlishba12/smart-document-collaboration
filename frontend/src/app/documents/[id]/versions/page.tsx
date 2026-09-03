@@ -5,7 +5,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import VersionHistoryPanel from "@/components/versions/VersionHistoryPanel";
 import VersionDiffViewer from "@/components/versions/VersionDiffViewer";
 import { useParams } from "next/navigation";
-import apiFetch from "@/lib/api";
+import api from "@/lib/api_client";
 
 export default function VersionsPage() {
   const params = useParams();
@@ -25,11 +25,11 @@ export default function VersionsPage() {
 
   async function fetchVersions() {
     try {
-      const data = await apiFetch<any[]>(
+      const response = await api.get(
         `/api/documents/${documentId}/versions`
       );
 
-      setVersions(data);
+      setVersions(response.data);
     } catch (err) {
       console.error("Failed to fetch versions:", err);
     } finally {
@@ -39,11 +39,8 @@ export default function VersionsPage() {
 
   async function handleRestore(versionId: string) {
     try {
-      await apiFetch(
-        `/api/documents/${documentId}/versions/${versionId}/restore`,
-        {
-          method: "POST",
-        }
+      await api.post(
+        `/api/documents/${documentId}/versions/${versionId}/restore`
       );
 
       alert("Version restored successfully");
@@ -59,10 +56,11 @@ export default function VersionsPage() {
     setViewingVersion(versionId);
 
     try {
-      // Fetch the selected version
-      const version = await apiFetch<any>(
+      const response = await api.get(
         `/api/documents/${documentId}/versions/${versionId}`
       );
+
+      const version = response.data;
 
       /*
        * We no longer request:
@@ -86,13 +84,16 @@ export default function VersionsPage() {
        * If it is already the newest version, compare it
        * with itself so the viewer still has valid content.
        */
+
       const newerVersion =
         selectedIndex > 0 ? versions[selectedIndex - 1] : null;
 
       setDiffData({
         oldContent: version.content || "Empty",
         newContent:
-          newerVersion?.content || version.content || "Empty",
+          newerVersion?.content ||
+          version.content ||
+          "Empty",
       });
     } catch (err) {
       console.error("Failed to load version:", err);
