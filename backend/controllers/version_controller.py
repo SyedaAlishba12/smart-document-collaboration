@@ -16,7 +16,10 @@ async def create_version(
     data: DocumentVersionCreate,
 ):
     return await DocumentVersionService.create_version(
-        session, document_id, user_id, data.content
+        session,
+        document_id,
+        user_id,
+        data.content,
     )
 
 
@@ -25,7 +28,8 @@ async def get_versions(
     document_id: UUID,
 ):
     return await DocumentVersionService.get_document_versions(
-        session, document_id
+        session,
+        document_id,
     )
 
 
@@ -34,12 +38,24 @@ async def get_version(
     document_id: UUID,
     version_id: UUID,
 ):
-    version = await DocumentVersionService.get_version(session, version_id)
+    version = await DocumentVersionService.get_version(
+        session,
+        version_id,
+    )
+
     if version is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Version not found",
         )
+
+    # Make sure the requested version belongs to this document
+    if version.document_id != document_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Version not found",
+        )
+
     return version
 
 
@@ -47,16 +63,32 @@ async def restore_version(
     session: AsyncSession,
     document_id: UUID,
     version_id: UUID,
+    user_id: UUID,
 ):
-    version = await DocumentVersionService.get_version(session, version_id)
+    version = await DocumentVersionService.get_version(
+        session,
+        version_id,
+    )
+
     if version is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Version not found",
         )
 
-    # Update the actual Document content (Zainab's model)
-    document = await session.get(Document, document_id)
+    # Make sure the requested version belongs to this document
+    if version.document_id != document_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Version not found",
+        )
+
+    # Update the actual Document content
+    document = await session.get(
+        Document,
+        document_id,
+    )
+
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -64,12 +96,17 @@ async def restore_version(
         )
 
     document.content = version.content
+
     await session.commit()
     await session.refresh(document)
 
-    # Create a new version to record this restore action
+    # Create a new version to record this restore action.
+    # The user performing the restore is the author of the new version.
     new_version = await DocumentVersionService.create_version(
-        session, document_id, version.created_by, document.content
+        session,
+        document_id,
+        user_id,
+        document.content,
     )
 
     return new_version

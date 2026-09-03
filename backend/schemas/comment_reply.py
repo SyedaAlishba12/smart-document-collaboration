@@ -21,3 +21,7 @@ class CommentReplyResponse(BaseModel):
     content: str
     created_at: datetime
     updated_at: datetime
+
+    # Author information
+    author_name: str | None = None
+    author_avatar: str | None = None

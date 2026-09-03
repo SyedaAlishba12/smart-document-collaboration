@@ -54,7 +54,7 @@ export default function SearchResultCard({ result }: SearchResultCardProps) {
   
   let href = "#";
   if (result.kind === "document") href = `/editor/${result.id}`;
-  else if (result.kind === "folder") href = `/folders/${result.id}`;
+  else if (result.kind === "folder") href = `/folders?folder=${result.id}`;
   else if (result.kind === "user") href = `/profile/${result.id}`;
 
   return (

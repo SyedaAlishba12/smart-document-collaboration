@@ -27,6 +27,10 @@ class CommentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Author information
+    author_name: str | None = None
+    author_avatar: str | None = None
+
 
 class CommentReplyResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -37,3 +41,7 @@ class CommentReplyResponse(BaseModel):
     content: str
     created_at: datetime
     updated_at: datetime
+
+    # Author information
+    author_name: str | None = None
+    author_avatar: str | None = None

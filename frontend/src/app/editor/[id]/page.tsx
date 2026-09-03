@@ -20,8 +20,6 @@ import {
 } from "@tiptap/react";
 
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 
 import { Table } from "@tiptap/extension-table";
@@ -30,7 +28,6 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 
 import ShareDialog from "@/components/sharing/ShareDialog";
-
 import { useAuth } from "@/context/AuthContext";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
@@ -65,8 +62,11 @@ export default function EditorPage() {
   const { user } = useAuth();
 
   /*
-   * Clean document ID.
+   * ========================================
+   * CLEAN DOCUMENT ID
+   * ========================================
    */
+
   const rawDocumentId = Array.isArray(docId)
     ? docId[0]
     : docId;
@@ -76,8 +76,11 @@ export default function EditorPage() {
     : "";
 
   /*
-   * Keep the latest title in a ref.
+   * ========================================
+   * TITLE REF
+   * ========================================
    */
+
   const titleRef = useRef("");
 
   useEffect(() => {
@@ -89,6 +92,7 @@ export default function EditorPage() {
    * REALTIME COLLABORATION
    * ========================================
    */
+
   const {
     users,
     cursors,
@@ -102,24 +106,29 @@ export default function EditorPage() {
   );
 
   /*
-   * Editor container reference.
-   *
-   * Remote cursor positions are rendered
-   * relative to this container.
+   * ========================================
+   * EDITOR CONTAINER REF
+   * ========================================
    */
+
   const editorContainerRef =
     useRef<HTMLDivElement | null>(null);
 
   /*
-   * Keep initialization in a ref.
+   * ========================================
+   * INITIALIZATION REF
+   * ========================================
    */
+
   const isInitializedRef =
     useRef(false);
 
   /*
-   * Prevent remote updates from being
-   * treated as local edits.
+   * ========================================
+   * REMOTE UPDATE REF
+   * ========================================
    */
+
   const applyingRemoteUpdateRef =
     useRef(false);
 
@@ -128,6 +137,7 @@ export default function EditorPage() {
    * SAVE DOCUMENT TO SERVER
    * ========================================
    */
+
   const saveToServer = useCallback(
     async (
       currentContent: string,
@@ -171,6 +181,7 @@ export default function EditorPage() {
    * DEBOUNCED SAVE
    * ========================================
    */
+
   const debouncedSave = useCallback(
     (() => {
       let timer:
@@ -203,26 +214,20 @@ export default function EditorPage() {
    * TIPTAP EDITOR
    * ========================================
    */
+
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-
-      Underline,
-
-      Link.configure({
-        openOnClick: true,
-
-        HTMLAttributes: {
-          class:
-            "text-blue-600 underline cursor-pointer",
-
-          target: "_blank",
-
-          rel: "noopener noreferrer",
-        },
-      }),
-
-      Image.configure({
+  extensions: [
+  StarterKit.configure({
+    link: {
+      openOnClick: true,
+      HTMLAttributes: {
+        class: "text-blue-600 underline cursor-pointer",
+        target: "_blank",
+        rel: "noopener noreferrer",
+      },
+    },
+  }),
+  Image.configure({
         HTMLAttributes: {
           class:
             "max-w-full h-auto rounded-xl my-4 border border-gray-200 shadow-sm object-contain",
@@ -272,11 +277,11 @@ export default function EditorPage() {
     },
 
     /*
-     * Every local Tiptap update:
-     *
-     * 1. Send to collaborators.
-     * 2. Autosave to database.
+     * ========================================
+     * LOCAL EDITOR UPDATE
+     * ========================================
      */
+
     onUpdate: ({ editor }) => {
       if (!isInitializedRef.current) {
         return;
@@ -285,6 +290,14 @@ export default function EditorPage() {
       if (
         applyingRemoteUpdateRef.current
       ) {
+        return;
+      }
+
+      /*
+       * Safety check in case TipTap has
+       * already destroyed the editor.
+       */
+      if (editor.isDestroyed) {
         return;
       }
 
@@ -314,15 +327,13 @@ export default function EditorPage() {
    * ========================================
    * SEND CURRENT CURSOR
    * ========================================
-   *
-   * Gets the current TipTap caret position
-   * and converts its browser coordinates into
-   * coordinates relative to the editor card.
    */
+
   const sendCurrentCursor =
     useCallback(() => {
       if (
         !editor ||
+        editor.isDestroyed ||
         !isInitializedRef.current ||
         !isConnected ||
         !editorContainerRef.current
@@ -353,11 +364,6 @@ export default function EditorPage() {
 
         sendCursor(x, y);
       } catch (error) {
-        /*
-         * coordsAtPos can occasionally fail while
-         * TipTap is changing the document or during
-         * an editor lifecycle transition.
-         */
         console.error(
           "Failed to send cursor position:",
           error
@@ -373,17 +379,24 @@ export default function EditorPage() {
    * ========================================
    * CURSOR SELECTION CHANGES
    * ========================================
-   *
-   * Send the cursor whenever the user moves
-   * the caret or changes their selection.
    */
+
   useEffect(() => {
-    if (!editor) {
+    if (
+      !editor ||
+      editor.isDestroyed
+    ) {
       return;
     }
 
     const handleSelectionUpdate =
       () => {
+        if (
+          editor.isDestroyed
+        ) {
+          return;
+        }
+
         sendCurrentCursor();
       };
 
@@ -393,10 +406,14 @@ export default function EditorPage() {
     );
 
     return () => {
-      editor.off(
-        "selectionUpdate",
-        handleSelectionUpdate
-      );
+      if (
+        !editor.isDestroyed
+      ) {
+        editor.off(
+          "selectionUpdate",
+          handleSelectionUpdate
+        );
+      }
     };
   }, [
     editor,
@@ -407,14 +424,13 @@ export default function EditorPage() {
    * ========================================
    * INITIAL CURSOR POSITION
    * ========================================
-   *
-   * Send the cursor shortly after the
-   * WebSocket connects.
    */
+
   useEffect(() => {
     if (
       !isConnected ||
       !editor ||
+      editor.isDestroyed ||
       !isInitializedRef.current
     ) {
       return;
@@ -422,7 +438,12 @@ export default function EditorPage() {
 
     const timer =
       setTimeout(() => {
-        sendCurrentCursor();
+        if (
+          editor &&
+          !editor.isDestroyed
+        ) {
+          sendCurrentCursor();
+        }
       }, 100);
 
     return () => {
@@ -438,11 +459,8 @@ export default function EditorPage() {
    * ========================================
    * CURSOR ON SCROLL / RESIZE
    * ========================================
-   *
-   * Browser coordinates change when the page
-   * scrolls or the window is resized, so update
-   * the current cursor position as well.
    */
+
   useEffect(() => {
     const container =
       editorContainerRef.current;
@@ -488,31 +506,69 @@ export default function EditorPage() {
    * ========================================
    * FETCH DOCUMENT CONTENT
    * ========================================
+   *
+   * IMPORTANT:
+   * This effect contains the fix for:
+   *
+   * Cannot read properties of null
+   * (reading 'commands')
+   *
+   * The API request is asynchronous, so the
+   * editor can be destroyed/recreated while
+   * the request is still running.
+   *
+   * We therefore check:
+   *
+   * 1. editor exists
+   * 2. editor is not destroyed
+   * 3. component is still active
+   *
+   * before calling editor.commands.
    */
+
   useEffect(() => {
     if (
       !docId ||
       !editor ||
+      editor.isDestroyed ||
       !cleanDocumentId
     ) {
       return;
     }
 
+    let isActive = true;
+
     /*
-     * Check whether current user is a viewer.
+     * ========================================
+     * CHECK VIEWER PERMISSION
+     * ========================================
      */
+
     if (user) {
       import("@/lib/permissions_api")
         .then(
           ({
             getPermissions,
           }) => {
+            if (!isActive) {
+              return null;
+            }
+
             return getPermissions(
               cleanDocumentId
             );
           }
         )
         .then((res) => {
+          if (
+            !isActive ||
+            !res ||
+            !editor ||
+            editor.isDestroyed
+          ) {
+            return;
+          }
+
           if (
             res.success &&
             res.data
@@ -529,28 +585,52 @@ export default function EditorPage() {
               myPerm.permission_level ===
                 "viewer"
             ) {
-              editor.setEditable(
-                false
-              );
+              if (
+                !editor.isDestroyed
+              ) {
+                editor.setEditable(
+                  false
+                );
+              }
             }
           }
         })
         .catch((err) => {
-          console.error(
-            "Error loading permissions:",
-            err
-          );
+          if (isActive) {
+            console.error(
+              "Error loading permissions:",
+              err
+            );
+          }
         });
     }
 
     /*
-     * Load actual document.
+     * ========================================
+     * LOAD ACTUAL DOCUMENT
+     * ========================================
      */
+
     api
       .get(
         `/api/documents/${cleanDocumentId}`
       )
       .then((res) => {
+        /*
+         * IMPORTANT:
+         * The component/editor may have been
+         * unmounted while the request was
+         * running.
+         */
+
+        if (
+          !isActive ||
+          !editor ||
+          editor.isDestroyed
+        ) {
+          return;
+        }
+
         const docData =
           res.data.data;
 
@@ -565,18 +645,37 @@ export default function EditorPage() {
         titleRef.current =
           loadedTitle;
 
+        /*
+         * Prevent this initial content
+         * assignment from being treated
+         * as a realtime/local update.
+         */
+
         applyingRemoteUpdateRef.current =
           true;
 
-        editor.commands.setContent(
-          docData.content || "",
-          {
-            emitUpdate: false,
-          }
-        );
+        /*
+         * FINAL SAFETY CHECK before
+         * accessing editor.commands.
+         */
+
+        if (
+          !editor.isDestroyed
+        ) {
+          editor.commands.setContent(
+            docData.content || "",
+            {
+              emitUpdate: false,
+            }
+          );
+        }
 
         applyingRemoteUpdateRef.current =
           false;
+
+        if (!isActive) {
+          return;
+        }
 
         setIsInitialized(true);
 
@@ -584,11 +683,29 @@ export default function EditorPage() {
           true;
       })
       .catch((err) => {
-        console.error(
-          "Error loading document:",
-          err
-        );
+        if (isActive) {
+          console.error(
+            "Error loading document:",
+            err
+          );
+
+          applyingRemoteUpdateRef.current =
+            false;
+        }
       });
+
+    /*
+     * Cleanup:
+     * Prevent an old async request from
+     * touching a new/destroyed editor.
+     */
+
+    return () => {
+      isActive = false;
+
+      applyingRemoteUpdateRef.current =
+        false;
+    };
   }, [
     docId,
     editor,
@@ -601,9 +718,11 @@ export default function EditorPage() {
    * APPLY REMOTE DOCUMENT UPDATE
    * ========================================
    */
+
   useEffect(() => {
     if (
       !editor ||
+      editor.isDestroyed ||
       !remoteUpdate
     ) {
       return;
@@ -623,33 +742,52 @@ export default function EditorPage() {
       return;
     }
 
-    applyingRemoteUpdateRef.current =
-      true;
+    /*
+     * Safety check before using commands.
+     */
 
-    editor.commands.setContent(
-      remoteUpdate.content,
-      {
-        emitUpdate: false,
-      }
-    );
-
-    if (
-      remoteUpdate.title
-    ) {
-      setTitle(
-        remoteUpdate.title
-      );
-
-      titleRef.current =
-        remoteUpdate.title;
+    if (editor.isDestroyed) {
+      return;
     }
 
     applyingRemoteUpdateRef.current =
-      false;
+      true;
 
-    setStatus(
-      "Updated by collaborator"
-    );
+    try {
+      if (
+        !editor.isDestroyed
+      ) {
+        editor.commands.setContent(
+          remoteUpdate.content,
+          {
+            emitUpdate: false,
+          }
+        );
+      }
+
+      if (
+        remoteUpdate.title
+      ) {
+        setTitle(
+          remoteUpdate.title
+        );
+
+        titleRef.current =
+          remoteUpdate.title;
+      }
+
+      setStatus(
+        "Updated by collaborator"
+      );
+    } catch (error) {
+      console.error(
+        "Failed to apply remote update:",
+        error
+      );
+    } finally {
+      applyingRemoteUpdateRef.current =
+        false;
+    }
   }, [
     editor,
     remoteUpdate,
@@ -661,6 +799,7 @@ export default function EditorPage() {
    * CTRL + S / CMD + S
    * ========================================
    */
+
   useEffect(() => {
     const handleKeyDown = (
       event: KeyboardEvent
@@ -676,6 +815,7 @@ export default function EditorPage() {
 
         if (
           !editor ||
+          editor.isDestroyed ||
           !isInitialized
         ) {
           return;
@@ -712,6 +852,7 @@ export default function EditorPage() {
    * TITLE CHANGES
    * ========================================
    */
+
   const handleTitleChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -725,7 +866,8 @@ export default function EditorPage() {
 
     if (
       isInitialized &&
-      editor
+      editor &&
+      !editor.isDestroyed
     ) {
       sendDocumentUpdate(
         editor.getHTML(),
@@ -744,9 +886,13 @@ export default function EditorPage() {
    * SAVE AND EXIT
    * ========================================
    */
+
   const handleSaveAndExit =
     async () => {
-      if (!editor) {
+      if (
+        !editor ||
+        editor.isDestroyed
+      ) {
         return;
       }
 
@@ -795,6 +941,7 @@ export default function EditorPage() {
    * VERSION HISTORY
    * ========================================
    */
+
   const handleVersionHistory =
     () => {
       router.push(
@@ -807,6 +954,7 @@ export default function EditorPage() {
    * IMAGE UPLOAD
    * ========================================
    */
+
   const handleImageUpload =
     async (
       e: React.ChangeEvent<HTMLInputElement>
@@ -897,6 +1045,7 @@ export default function EditorPage() {
 
         if (
           editor &&
+          !editor.isDestroyed &&
           imageUrl
         ) {
           editor
@@ -910,7 +1059,8 @@ export default function EditorPage() {
 
         if (
           isInitialized &&
-          editor
+          editor &&
+          !editor.isDestroyed
         ) {
           const updatedContent =
             editor.getHTML();
@@ -943,8 +1093,12 @@ export default function EditorPage() {
    * INSERT / EDIT HYPERLINK
    * ========================================
    */
+
   const setLink = () => {
-    if (!editor) {
+    if (
+      !editor ||
+      editor.isDestroyed
+    ) {
       return;
     }
 
@@ -1009,6 +1163,7 @@ export default function EditorPage() {
    * FILE ATTACHMENT UPLOAD
    * ========================================
    */
+
   const handleFileUpload =
     async (
       e: React.ChangeEvent<HTMLInputElement>
@@ -1077,7 +1232,10 @@ export default function EditorPage() {
           ]
         );
 
-        if (editor) {
+        if (
+          editor &&
+          !editor.isDestroyed
+        ) {
           editor
             .chain()
             .focus()
@@ -1095,24 +1253,34 @@ export default function EditorPage() {
         );
 
         setStatus(
-          "Error uploading file"
+          "Error uploading image"
         );
       }
     };
 
   /*
-   * TipTap may not be ready during the
-   * initial render.
+   * ========================================
+   * TIPTAP MAY NOT BE READY
+   * ========================================
    */
+
   if (!editor) {
     return null;
   }
+
+  /*
+   * ========================================
+   * RENDER
+   * ========================================
+   */
 
   return (
     <div className="h-screen bg-[#FBFBFA] flex flex-col overflow-hidden text-[#1A1A1A]">
 
       {/* Header */}
+
       <header className="border-b border-gray-200 bg-white px-8 py-3 flex justify-between items-center shadow-sm shrink-0">
+
         <input
           type="text"
           value={title}
@@ -1126,6 +1294,7 @@ export default function EditorPage() {
         <div className="flex items-center gap-3">
 
           {/* Realtime status */}
+
           <span
             className={`text-xs font-medium px-3 py-1 rounded-full ${
               isConnected
@@ -1139,11 +1308,13 @@ export default function EditorPage() {
           </span>
 
           {/* Save status */}
+
           <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
             {status}
           </span>
 
           {/* Share */}
+
           <button
             type="button"
             onClick={() =>
@@ -1157,6 +1328,7 @@ export default function EditorPage() {
           </button>
 
           {/* Comments */}
+
           <button
             type="button"
             onClick={() => {
@@ -1170,6 +1342,7 @@ export default function EditorPage() {
           </button>
 
           {/* Version History */}
+
           <button
             type="button"
             onClick={
@@ -1181,6 +1354,7 @@ export default function EditorPage() {
           </button>
 
           {/* Save & Exit */}
+
           <button
             type="button"
             onClick={
@@ -1190,13 +1364,16 @@ export default function EditorPage() {
           >
             Save & Exit
           </button>
+
         </div>
       </header>
 
       {/* Formatting Toolbar */}
+
       <div className="bg-white border-b border-gray-200 px-8 py-2.5 flex flex-wrap gap-1.5 text-xs font-medium text-gray-700 shadow-sm items-center shrink-0">
 
         {/* H1 */}
+
         <button
           type="button"
           onClick={() =>
@@ -1223,6 +1400,7 @@ export default function EditorPage() {
         </button>
 
         {/* H2 */}
+
         <button
           type="button"
           onClick={() =>
@@ -1251,6 +1429,7 @@ export default function EditorPage() {
         <span className="w-px h-4 bg-gray-300 mx-1" />
 
         {/* Bold */}
+
         <button
           type="button"
           onClick={() =>
@@ -1270,6 +1449,7 @@ export default function EditorPage() {
         </button>
 
         {/* Italic */}
+
         <button
           type="button"
           onClick={() =>
@@ -1291,6 +1471,7 @@ export default function EditorPage() {
         </button>
 
         {/* Underline */}
+
         <button
           type="button"
           onClick={() =>
@@ -1314,6 +1495,7 @@ export default function EditorPage() {
         <span className="w-px h-4 bg-gray-300 mx-1" />
 
         {/* Bullet List */}
+
         <button
           type="button"
           onClick={() =>
@@ -1335,6 +1517,7 @@ export default function EditorPage() {
         </button>
 
         {/* Ordered List */}
+
         <button
           type="button"
           onClick={() =>
@@ -1356,6 +1539,7 @@ export default function EditorPage() {
         </button>
 
         {/* Quote */}
+
         <button
           type="button"
           onClick={() =>
@@ -1377,6 +1561,7 @@ export default function EditorPage() {
         </button>
 
         {/* Code Block */}
+
         <button
           type="button"
           onClick={() =>
@@ -1400,6 +1585,7 @@ export default function EditorPage() {
         <span className="w-px h-4 bg-gray-300 mx-1" />
 
         {/* Link */}
+
         <button
           type="button"
           onClick={setLink}
@@ -1413,6 +1599,7 @@ export default function EditorPage() {
         </button>
 
         {/* Table */}
+
         <button
           type="button"
           onClick={() =>
@@ -1432,7 +1619,9 @@ export default function EditorPage() {
         </button>
 
         {/* Image */}
+
         <label className="px-2.5 py-1 border rounded bg-gray-50 hover:bg-gray-100 transition cursor-pointer">
+
           Image
 
           <input
@@ -1443,10 +1632,13 @@ export default function EditorPage() {
             }
             className="hidden"
           />
+
         </label>
 
         {/* Attach File */}
+
         <label className="px-2.5 py-1 border rounded bg-gray-50 hover:bg-gray-100 transition cursor-pointer">
+
           Attach File
 
           <input
@@ -1456,16 +1648,20 @@ export default function EditorPage() {
             }
             className="hidden"
           />
+
         </label>
+
       </div>
 
       {/* Editor */}
+
       <main className="flex-1 overflow-y-auto px-4 py-6 flex justify-center">
 
         <div
           ref={editorContainerRef}
           className="relative max-w-4xl w-full bg-white p-8 border border-gray-200 rounded-xl shadow-sm h-fit mb-12"
         >
+
           <EditorContent
             editor={editor}
           />
@@ -1479,9 +1675,11 @@ export default function EditorPage() {
               remoteUserId,
               position,
             ]) => {
+
               /*
                * Never render our own cursor.
                */
+
               if (
                 remoteUserId ===
                 user?.id
@@ -1490,12 +1688,10 @@ export default function EditorPage() {
               }
 
               /*
-               * Only show a cursor while
-               * that collaborator is online.
-               *
-               * This prevents stale cursors
-               * from appearing.
+               * Only show cursor while
+               * collaborator is online.
                */
+
               if (
                 !users.includes(
                   remoteUserId
@@ -1513,25 +1709,32 @@ export default function EditorPage() {
                     top: `${position.y}px`,
                   }}
                 >
+
                   <div className="relative">
 
                     {/* Cursor line */}
+
                     <div className="w-0.5 h-5 bg-blue-500 rounded-full shadow-sm" />
 
                     {/* Collaborator label */}
+
                     <div className="absolute left-1 top-[-18px] whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium text-white bg-blue-500 shadow-sm">
                       Collaborator
                     </div>
 
                   </div>
+
                 </div>
               );
             }
           )}
+
         </div>
+
       </main>
 
       {/* Share Dialog */}
+
       {isShareModalOpen && (
         <ShareDialog
           documentId={
@@ -1551,6 +1754,7 @@ export default function EditorPage() {
           }
         />
       )}
+
     </div>
   );
 }

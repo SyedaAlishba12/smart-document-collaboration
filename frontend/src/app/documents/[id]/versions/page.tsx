@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import VersionHistoryPanel from "@/components/versions/VersionHistoryPanel";
 import VersionDiffViewer from "@/components/versions/VersionDiffViewer";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/api_client";
+import { ArrowLeft } from "lucide-react";
 
 export default function VersionsPage() {
   const params = useParams();
+  const router = useRouter();
   const documentId = params.id as string;
 
   const [versions, setVersions] = useState<any[]>([]);
@@ -112,9 +114,21 @@ export default function VersionsPage() {
   return (
     <MainLayout>
       <div className="mx-auto max-w-[900px]">
-        <h1 className="mb-6 text-2xl font-semibold">
-          Version History
-        </h1>
+        <div className="mb-6 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
+            aria-label="Back to document"
+            title="Back to document"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+
+          <h1 className="text-2xl font-semibold">
+            Version History
+          </h1>
+        </div>
 
         <div className="h-[600px] rounded-2xl border border-[var(--border)] bg-white">
           {viewingVersion ? (

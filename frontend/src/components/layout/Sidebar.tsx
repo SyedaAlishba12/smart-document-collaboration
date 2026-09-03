@@ -6,7 +6,6 @@ import {
   Files,
   FileText,
   Folder,
-  HelpCircle,
   Home,
   LayoutGrid,
   Search,
@@ -231,15 +230,12 @@ export default function Sidebar({
           collapsed={collapsed}
         />
 
-        <SidebarItem
-          icon={HelpCircle}
-          label="Help & Shortcuts"
-          collapsed={collapsed}
-        />
-
+    
         <SidebarItem
           icon={Settings}
           label="Settings"
+          href="/profile"
+          active={mounted && pathname === "/profile"}
           collapsed={collapsed}
         />
 
@@ -455,4 +451,3 @@ function SidebarItem({
     </button>
   );
 }
-

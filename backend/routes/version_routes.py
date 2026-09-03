@@ -1,16 +1,20 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.auth_dependency import get_current_user_id
+
 from controllers.version_controller import (
     create_version,
     get_version,
     get_versions,
     restore_version,
 )
+
 from database.session import get_db
+
 from schemas.document_version import (
     DocumentVersionCreate,
     DocumentVersionResponse,
@@ -53,7 +57,12 @@ async def create(
     session: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
 ):
-    return await create_version(session, document_id, user_id, data)
+    return await create_version(
+        session,
+        document_id,
+        user_id,
+        data,
+    )
 
 
 @router.post(
@@ -66,4 +75,9 @@ async def restore(
     session: AsyncSession = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
 ):
-    return await restore_version(session, document_id, version_id)
+    return await restore_version(
+        session,
+        document_id,
+        version_id,
+        user_id,
+    )

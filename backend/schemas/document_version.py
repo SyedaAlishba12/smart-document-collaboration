@@ -17,3 +17,7 @@ class DocumentVersionResponse(BaseModel):
     version_number: int
     content: str
     created_at: datetime
+
+    # Author information for the version history UI
+    author_name: str | None = None
+    author_avatar: str | None = None
