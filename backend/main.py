@@ -53,9 +53,16 @@ frontend_url = os.getenv(
 )
 
 
+allowed_origins = [
+    "http://localhost:3000",
+    "https://smart-document-collaboration.vercel.app",
+    frontend_url,
+]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url],
+    allow_origins=list(set(allowed_origins)),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -124,3 +131,4 @@ async def database_health():
             "message": "Database connection successful",
             "data": result.scalar(),
         }
+
